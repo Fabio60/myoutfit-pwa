@@ -94,7 +94,7 @@ function setStatus(id,msg,ok=false){
 }
 async function signup(){
   const email=document.getElementById("email").value.trim(), password=document.getElementById("password").value;
-  const {data,error}=await sb.auth.signUp({email,password});
+  const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:"https://fabio60.github.io/myoutfit-pwa/"}});
   if(error) return setStatus("authStatus",error.message);
   if(data.session){ setStatus("authStatus","Account creato.",true); await boot(); }
   else setStatus("authStatus","Account creato. Controlla l'email per confermare, poi accedi.",true);
