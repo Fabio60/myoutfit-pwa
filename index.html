@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f4ef" />
+  <link rel="manifest" href="manifest.json" />
+  <title>MyOutfit Demo</title>
+  <style>
+    :root{
+      --bg:#f7f4ef;
+      --card:#ffffff;
+      --text:#191919;
+      --muted:#7c7770;
+      --line:#e9e2da;
+      --accent:#1f1f1f;
+      --soft:#eee8e1;
+      --good:#557a5d;
+      --bad:#a65c5c;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    }
+    .app{max-width:500px;margin:auto;min-height:100vh;padding:env(safe-area-inset-top) 16px calc(92px + env(safe-area-inset-bottom))}
+    header{padding:22px 4px 12px;display:flex;align-items:center;justify-content:space-between}
+    .brand{font-family:Georgia,serif;font-size:30px;letter-spacing:.02em}
+    .avatar{width:38px;height:38px;border-radius:50%;background:#ddd1c5;display:grid;place-items:center;font-weight:700}
+    .hero{
+      background:linear-gradient(145deg,#e7ddd2,#f9f6f1);
+      border:1px solid #e6ddd4;border-radius:28px;padding:22px;margin:8px 0 18px;
+      box-shadow:0 12px 30px rgba(40,30,20,.06)
+    }
+    .hero h1{font-family:Georgia,serif;font-weight:500;font-size:29px;line-height:1.08;margin:0 0 8px}
+    .hero p{margin:0;color:var(--muted);line-height:1.45}
+    .section-title{font-size:20px;font-weight:700;margin:22px 4px 12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .tile{
+      border:1px solid var(--line);background:var(--card);border-radius:22px;padding:18px;min-height:126px;
+      box-shadow:0 8px 20px rgba(0,0,0,.035);cursor:pointer
+    }
+    .tile:active,.btn:active,.navbtn:active{transform:scale(.98)}
+    .icon{font-size:28px;margin-bottom:18px}
+    .tile b{display:block;font-size:16px;margin-bottom:4px}
+    .tile small{color:var(--muted);line-height:1.3}
+    .screen{display:none}
+    .screen.active{display:block}
+    .back{border:0;background:transparent;font-size:16px;padding:8px 0;color:#3b3b3b;cursor:pointer}
+    .card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:12px}
+    .garment{display:flex;align-items:center;gap:14px}
+    .garment-img{width:74px;height:88px;border-radius:16px;display:grid;place-items:center;font-size:34px;background:#f1ece6}
+    .grow{flex:1}
+    .muted{color:var(--muted);font-size:14px}
+    .tag{display:inline-block;background:#f1ece6;border-radius:999px;padding:6px 10px;font-size:12px;margin:4px 4px 0 0}
+    .btn{width:100%;border:0;border-radius:16px;padding:15px 16px;font-size:16px;font-weight:650;cursor:pointer;margin-top:10px}
+    .btn-dark{background:#1e1e1e;color:#fff}
+    .btn-soft{background:#eee7df;color:#222}
+    .outfit{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .piece{background:#f5f1ec;border-radius:18px;aspect-ratio:1/1.15;display:grid;place-items:center;font-size:35px}
+    .choice-row{display:flex;gap:10px;margin-top:14px}
+    .choice-row button{flex:1}
+    .toggle{appearance:none;width:46px;height:28px;border-radius:999px;background:#d5d1cc;position:relative;transition:.2s;vertical-align:middle}
+    .toggle:checked{background:#242424}
+    .toggle:after{content:"";width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;left:3px;top:3px;transition:.2s;box-shadow:0 1px 4px #999}
+    .toggle:checked:after{left:21px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .bottom{
+      position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+      width:min(500px,100%);background:rgba(255,255,255,.9);backdrop-filter:blur(16px);
+      border-top:1px solid #e9e2da;padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+      display:grid;grid-template-columns:repeat(4,1fr);z-index:20
+    }
+    .navbtn{border:0;background:transparent;font-size:11px;color:#777;display:grid;gap:3px;justify-items:center;padding:6px;cursor:pointer}
+    .navbtn span{font-size:20px}
+    .navbtn.active{color:#111;font-weight:700}
+    .toast{position:fixed;left:50%;bottom:105px;transform:translateX(-50%);background:#191919;color:#fff;padding:11px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">MyOutfit</div>
+    <div class="avatar">F</div>
+  </header>
+
+  <section id="home" class="screen active">
+    <div class="hero">
+      <h1>Il tuo guardaroba,<br>più semplice.</h1>
+      <p>Scegli cosa indossare usando i capi che possiedi già.</p>
+    </div>
+
+    <div class="section-title">Cosa vuoi fare?</div>
+    <div class="grid">
+      <div class="tile" onclick="show('wardrobe')">
+        <div class="icon">👗</div><b>Il mio armadio</b><small>Visualizza e gestisci i tuoi capi</small>
+      </div>
+      <div class="tile" onclick="show('whatwear')">
+        <div class="icon">✨</div><b>Cosa metto?</b><small>Lascia che MyOutfit ti suggerisca</small>
+      </div>
+      <div class="tile" onclick="show('create')">
+        <div class="icon">🧥</div><b>Crea un outfit</b><small>Parti da un capo o da un'occasione</small>
+      </div>
+      <div class="tile" onclick="show('buy')">
+        <div class="icon">🛍️</div><b>Prima di comprare</b><small>Scopri quanti outfit crea un nuovo capo</small>
+      </div>
+      <div class="tile" onclick="show('favorites')">
+        <div class="icon">♥️</div><b>Preferiti</b><small>Ritrova gli outfit che ti piacciono</small>
+      </div>
+      <div class="tile" onclick="show('family')">
+        <div class="icon">👨‍👩‍👧</div><b>Famiglia</b><small>Gestisci più guardaroba</small>
+      </div>
+    </div>
+  </section>
+
+  <section id="wardrobe" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Il mio armadio</div>
+    <div class="card garment">
+      <div class="garment-img">👕</div>
+      <div class="grow"><b>Camicia azzurra</b><div class="muted">Camicia · Azzurro</div><span class="tag">Disponibile</span></div>
+      <input class="toggle" type="checkbox" checked onchange="availability(this,'Camicia azzurra')">
+    </div>
+    <div class="card garment">
+      <div class="garment-img">👖</div>
+      <div class="grow"><b>Pantalone blu</b><div class="muted">Pantalone · Navy</div><span class="tag">Disponibile</span></div>
+      <input class="toggle" type="checkbox" checked onchange="availability(this,'Pantalone blu')">
+    </div>
+    <div class="card garment">
+      <div class="garment-img">🧥</div>
+      <div class="grow"><b>Giacca beige</b><div class="muted">Giacca · Beige</div><span class="tag">Disponibile</span></div>
+      <input class="toggle" type="checkbox" checked onchange="availability(this,'Giacca beige')">
+    </div>
+    <button class="btn btn-dark" onclick="toast('Foto capo aggiunta alla demo')">＋ Aggiungi un capo</button>
+  </section>
+
+  <section id="whatwear" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Cosa metto oggi?</div>
+    <div class="card">
+      <div class="row"><div><b>Occasione</b><div class="muted">Cena informale</div></div><span>🍷</span></div>
+      <div class="row" style="margin-top:14px"><div><b>Meteo</b><div class="muted">18°C · variabile</div></div><input class="toggle" type="checkbox" checked></div>
+      <button class="btn btn-dark" onclick="suggest()">Suggerisci outfit</button>
+    </div>
+    <div id="suggestion" class="card" style="display:none">
+      <b>Proposta MyOutfit</b>
+      <div class="outfit"><div class="piece">👕</div><div class="piece">👖</div><div class="piece">🧥</div></div>
+      <div class="muted" style="margin-top:12px">Camicia azzurra · Pantalone blu · Giacca beige</div>
+      <div class="choice-row">
+        <button class="btn btn-soft" onclick="toast('Segnato: non mi piace')">👎 Non mi piace</button>
+        <button class="btn btn-dark" onclick="toast('Aggiunto ai preferiti')">👍 Mi piace</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="create" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Crea un outfit</div>
+    <div class="card">
+      <b>Da cosa vuoi partire?</b>
+      <button class="btn btn-soft" onclick="toast('Seleziona un capo dal tuo armadio')">👚 Da un mio capo</button>
+      <button class="btn btn-soft" onclick="toast('Occasione selezionata: lavoro')">💼 Da un'occasione</button>
+      <button class="btn btn-soft" onclick="toast('Modalità libera attivata')">✨ Lascia scegliere MyOutfit</button>
+    </div>
+  </section>
+
+  <section id="buy" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Prima di comprare</div>
+    <div class="card">
+      <div style="font-size:58px;text-align:center;margin:10px">📷</div>
+      <b>Fotografa un capo in negozio</b>
+      <p class="muted">MyOutfit lo confronterà con ciò che possiedi già e ti mostrerà quanti abbinamenti puoi creare.</p>
+      <button class="btn btn-dark" onclick="analyzeBuy()">Scatta / scegli foto</button>
+    </div>
+    <div id="buyresult" class="card" style="display:none">
+      <b>Risultato simulato</b>
+      <p>Questo capo crea <strong>7 outfit</strong> con il tuo guardaroba.</p>
+      <div class="outfit"><div class="piece">👚</div><div class="piece">👖</div><div class="piece">👟</div></div>
+    </div>
+  </section>
+
+  <section id="favorites" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Preferiti</div>
+    <div class="card">
+      <b>Cena informale</b>
+      <div class="outfit"><div class="piece">👕</div><div class="piece">👖</div><div class="piece">🧥</div></div>
+    </div>
+  </section>
+
+  <section id="family" class="screen">
+    <button class="back" onclick="show('home')">‹ Home</button>
+    <div class="section-title">Famiglia</div>
+    <div class="card row"><div><b>Fabio</b><div class="muted">Guardaroba principale</div></div><span>✓</span></div>
+    <div class="card row"><div><b>Aggiungi persona</b><div class="muted">Crea un nuovo guardaroba</div></div><span>＋</span></div>
+  </section>
+</div>
+
+<nav class="bottom">
+  <button class="navbtn active" onclick="show('home',this)"><span>⌂</span>Home</button>
+  <button class="navbtn" onclick="show('wardrobe',this)"><span>👗</span>Armadio</button>
+  <button class="navbtn" onclick="show('whatwear',this)"><span>✨</span>Outfit</button>
+  <button class="navbtn" onclick="show('favorites',this)"><span>♡</span>Preferiti</button>
+</nav>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function show(id,nav){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(nav){
+    document.querySelectorAll('.navbtn').forEach(n=>n.classList.remove('active'));
+    nav.classList.add('active');
+  }
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1500);
+}
+function suggest(){
+  document.getElementById('suggestion').style.display='block';
+  toast('Outfit creato');
+}
+function analyzeBuy(){
+  document.getElementById('buyresult').style.display='block';
+  toast('Analisi completata');
+}
+function availability(el,name){
+  toast(name + (el.checked ? ' disponibile' : ' escluso dagli outfit'));
+}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
