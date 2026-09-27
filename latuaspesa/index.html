@@ -295,7 +295,13 @@ function render(){
 }
 function setupSwipe(el){
   const track=el.querySelector(".swipeTrack");
-  const key=el.dataset.place?("place:"+el.dataset.place):("item:"+el.dataset.item);
+  const key=el.dataset.place
+    ? ("place:"+el.dataset.place)
+    : el.dataset.item
+      ? ("item:"+el.dataset.item)
+      : el.dataset.suggestionName
+        ? ("suggestion:"+el.dataset.suggestionName+":"+(el.dataset.suggestionPlace||""))
+        : ("swipe:"+Math.random());
   if(activeSwipe===key)track.style.transform="translateX(-190px)";
 
   let startX=0,currentX=0,drag=false;
