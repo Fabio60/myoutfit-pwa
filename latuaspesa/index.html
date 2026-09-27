@@ -70,19 +70,27 @@ h2{margin:0 0 12px;font-size:22px} label{display:block;font-size:13px;color:#6e6
       <div class="muted small" id="listDate" style="margin-top:4px"></div>
       <div id="items" style="margin-top:10px"></div>
     </div>
-    <div class="card">
-      <h2>Da una ricetta</h2>
-      <div class="muted small" style="margin-bottom:10px">Incolla il testo di una ricetta: proverò a estrarre gli ingredienti e potrai aggiungerli alla lista corrente.</div>
-      <textarea id="recipeText" class="field" rows="7" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
-      <div style="height:10px"></div>
-      <button class="btn secondary" id="extractRecipeBtn">Trova ingredienti</button>
-      <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
+    <div class="card" style="padding:12px 16px">
+      <button class="btn secondary" id="openRecipeBtn">＋ Aggiungi da ricetta</button>
     </div>
     <div class="addbar">
       <input id="itemInput" class="field" placeholder="Aggiungi prodotto…" autocomplete="off">
       <button class="btn" id="addBtn" style="width:auto">+</button>
     </div>
   </section>
+</div>
+
+<div id="recipeSheet" class="sheet hidden">
+  <div class="sheetbox">
+    <h2>Aggiungi da ricetta</h2>
+    <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta e scegli gli ingredienti da aggiungere alla lista corrente.</div>
+    <textarea id="recipeText" class="field" rows="8" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
+    <div style="height:10px"></div>
+    <button class="btn" id="extractRecipeBtn">Trova ingredienti</button>
+    <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
+    <div style="height:8px"></div>
+    <button class="btn secondary" id="closeRecipeBtn">Chiudi</button>
+  </div>
 </div>
 
 <div id="shareSheet" class="sheet hidden">
@@ -235,7 +243,7 @@ function showRecipePreview(){
     $("#addRecipeItemsBtn").disabled=true;
     try{
       for(const name of selected) await rpc("shopping_add_item",{p_list_id:current.id,p_token:current.token,p_name:name});
-      $("#recipeText").value="";box.classList.add("hidden");await loadList(true);toast(selected.length+" ingredienti aggiunti");
+      $("#recipeText").value="";box.classList.add("hidden");$("#recipeSheet").classList.add("hidden");await loadList(true);toast(selected.length+" ingredienti aggiunti");
     }catch(e){alert("Errore durante l'aggiunta degli ingredienti.")}finally{$("#addRecipeItemsBtn")?.removeAttribute("disabled")}
   };
 }
@@ -274,7 +282,10 @@ async function nativeShare(){const url=shareUrl();if(navigator.share){await navi
 function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>loadList(true),3000)}
 async function boot(){
   $("#newDate").value=today();renderHistory();
-  $("#createBtn").onclick=createList;$("#backBtn").onclick=showHome;$("#addBtn").onclick=addItem;$("#extractRecipeBtn").onclick=showRecipePreview;
+  $("#createBtn").onclick=createList;$("#backBtn").onclick=showHome;$("#addBtn").onclick=addItem;
+  $("#openRecipeBtn").onclick=()=>$("#recipeSheet").classList.remove("hidden");
+  $("#closeRecipeBtn").onclick=()=>$("#recipeSheet").classList.add("hidden");
+  $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#itemInput").addEventListener("keydown",e=>{if(e.key==="Enter")addItem()});
   $("#shareBtn").onclick=openShare;$("#editListBtn").onclick=editList;$("#deleteListBtn").onclick=deleteList;
   $("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
