@@ -36,15 +36,20 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
       <button class="iconbtn" id="shareBtn">Condividi</button>
     </div>
   </div>
+  <div id="syncStatus" class="muted small" style="margin:-8px 4px 8px">Sincronizzazione…</div>
 
-  <div class="hero">
-    <button class="summaryBtn" id="openPendingBtn">
+  <div class="hero" style="display:block">
+    <div style="display:flex;align-items:center;gap:12px">
       <div class="heroText">
-        <div class="heroTitle">Cosa devo comprare?</div>
-        <div class="heroSub">Include anche gli acquisti arretrati non ancora effettuati.</div>
+        <div class="heroTitle">Dove sto andando?</div>
+        <div class="heroSub">Scegli un luogo e vedrai solo gli acquisti da fare lì, compresi gli arretrati.</div>
       </div>
       <div class="count" id="pendingCount">0</div>
-    </button>
+    </div>
+    <div style="height:12px"></div>
+    <select id="goingPlaceSelect" class="field" style="background:#fff;color:#111"></select>
+    <div style="height:10px"></div>
+    <button class="btn full" id="openPendingBtn" style="background:#fff;color:#007aff">Mostra cosa comprare</button>
   </div>
 
   <div class="card">
@@ -143,14 +148,19 @@ async function ensureWorkspace(){
 async function load(){
   if(!workspace)return;
   try{
+    $("#syncStatus").textContent="Sincronizzazione…";
     const d=await rpc("shopping_v2_get",{p_list_id:workspace.id,p_token:workspace.token});
     state={places:d?.places||[],items:d?.items||[]};
     render();
-  }catch(e){console.error(e)}
+  }catch(e){
+    $("#syncStatus").textContent="Problema di sincronizzazione · tocca per riprovare";
+    console.error(e)
+  }
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderAllItems();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderAllItems();renderPendingCount();
+  $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function renderPlaces(){
   const root=$("#placesList");
@@ -166,6 +176,11 @@ function renderPlaces(){
 function renderPlaceSelect(){
   const s=$("#placeSelect"),old=s.value;
   s.innerHTML='<option value="">Senza luogo</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  if([...s.options].some(o=>o.value===old))s.value=old;
+}
+function renderGoingPlaceSelect(){
+  const s=$("#goingPlaceSelect"),old=s.value;
+  s.innerHTML='<option value="">Tutti i luoghi</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   if([...s.options].some(o=>o.value===old))s.value=old;
 }
 function renderAllItems(){
@@ -189,13 +204,16 @@ function renderAllItems(){
   root.querySelectorAll("[data-edit-item]").forEach(b=>b.onclick=()=>editItem(b.dataset.editItem));
   root.querySelectorAll("[data-del-item]").forEach(b=>b.onclick=()=>deleteItem(b.dataset.delItem));
 }
-function pendingItems(){
-  return state.items.filter(i=>!i.purchased&&i.needed_date<=today());
+function pendingItems(placeId=null){
+  return state.items.filter(i=>!i.purchased&&i.needed_date<=today()&&(!placeId||i.place_id===placeId));
 }
-function renderPendingCount(){$("#pendingCount").textContent=pendingItems().length}
+function renderPendingCount(){
+  const placeId=$("#goingPlaceSelect")?.value||null;
+  $("#pendingCount").textContent=pendingItems(placeId).length
+}
 function renderPendingGroups(){
-  const root=$("#pendingGroups"),pending=pendingItems();
-  if(!pending.length){root.innerHTML='<div class="empty">Nessun acquisto in sospeso 🎉</div>';return}
+  const root=$("#pendingGroups"),placeId=$("#goingPlaceSelect").value||null,pending=pendingItems(placeId);
+  if(!pending.length){root.innerHTML='<div class="empty">Nessun acquisto in sospeso per questa scelta 🎉</div>';return}
   const groups={};
   for(const i of pending)(groups[i.place_name]??=[]).push(i);
   root.innerHTML=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([place,items])=>`
@@ -271,13 +289,17 @@ async function boot(){
   $("#placeInput").addEventListener("keydown",e=>{if(e.key==="Enter")addPlace()});
   $("#addProductBtn").onclick=addProduct;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
-  $("#openPendingBtn").onclick=()=>{renderPendingGroups();$("#pendingSheet").classList.remove("hidden")};
+  $("#goingPlaceSelect").onchange=renderPendingCount;
+  $("#openPendingBtn").onclick=async()=>{await load();renderPendingGroups();$("#pendingSheet").classList.remove("hidden")};
   $("#closePendingBtn").onclick=()=>$("#pendingSheet").classList.add("hidden");
   $("#shareBtn").onclick=openShare;$("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
   $("#copyBtn").onclick=async()=>{await navigator.clipboard.writeText(shareUrl());toast("Link copiato")};
   $("#nativeShareBtn").onclick=nativeShare;
+  $("#syncStatus").onclick=load;
   await ensureWorkspace();await load();
-  poll=setInterval(load,4000);
+  poll=setInterval(load,1500);
+  window.addEventListener("focus",load);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
 }
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js");
 boot();
