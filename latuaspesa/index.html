@@ -93,8 +93,14 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 
   <div class="card">
     <div class="sectionTitle">Prodotti programmati</div>
-    <div class="muted small">Qui restano anche i prodotti inseriti per date future e quelli già acquistati.</div>
+    <div class="muted small">Qui vedi solo i prodotti ancora da acquistare, compresi quelli futuri e gli arretrati.</div>
     <div id="allItems" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">Storico acquisti</div>
+    <div class="muted small">Quando segni un prodotto come acquistato, viene spostato qui.</div>
+    <div id="historyItems" style="margin-top:10px"></div>
   </div>
 </div>
 
@@ -219,7 +225,7 @@ async function load(){
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderPendingCount();
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
@@ -304,16 +310,16 @@ function renderRecipePlaceSelect(){
 }
 function renderAllItems(){
   const root=$("#allItems");
-  if(!state.items.length){root.innerHTML='<div class="empty">Nessun prodotto inserito.</div>';return}
-  const items=[...state.items].sort((a,b)=>a.needed_date.localeCompare(b.needed_date)||a.place_name.localeCompare(b.place_name));
+  const items=state.items.filter(i=>!i.purchased).sort((a,b)=>a.needed_date.localeCompare(b.needed_date)||a.place_name.localeCompare(b.place_name));
+  if(!items.length){root.innerHTML='<div class="empty">Nessun prodotto da acquistare.</div>';return}
   root.innerHTML=items.map(i=>{
-    const status=i.purchased?"Acquistato":(i.needed_date<today()?"Arretrato":(i.needed_date===today()?"Oggi":"Futuro"));
+    const status=i.needed_date<today()?"Arretrato":(i.needed_date===today()?"Oggi":"Futuro");
     return `<div class="swipe" data-item="${i.id}">
       <div class="swipeTrack">
         <div class="swipeMain">
-          <button class="check ${i.purchased?"done":""}" data-toggle="${i.id}">${i.purchased?"✓":""}</button>
+          <button class="check" data-toggle="${i.id}"></button>
           <div style="flex:1;min-width:0">
-            <div class="itemName ${i.purchased?"muted":""}">${esc(i.name)}</div>
+            <div class="itemName">${esc(i.name)}</div>
             <div class="itemMeta">${esc(i.place_name)} · ${fmtDate(i.needed_date)} · ${status}</div>
           </div>
         </div>
@@ -325,9 +331,27 @@ function renderAllItems(){
     </div>`;
   }).join("");
   root.querySelectorAll(".swipe").forEach(setupSwipe);
-  root.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=async e=>{e.stopPropagation();await rpc("shopping_v2_toggle_item",{p_item_id:b.dataset.toggle,p_token:workspace.token});await load()});
+  root.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=async e=>{e.stopPropagation();await rpc("shopping_v2_toggle_item",{p_item_id:b.dataset.toggle,p_token:workspace.token});await load();toast("Spostato nello storico")});
   root.querySelectorAll("[data-edit-item]").forEach(b=>b.onclick=e=>{e.stopPropagation();editItem(b.dataset.editItem)});
   root.querySelectorAll("[data-del-item]").forEach(b=>b.onclick=e=>{e.stopPropagation();deleteItem(b.dataset.delItem)});
+}
+
+function renderHistoryItems(){
+  const root=$("#historyItems");
+  const items=state.items.filter(i=>i.purchased).sort((a,b)=>(b.purchased_at||"").localeCompare(a.purchased_at||""));
+  if(!items.length){root.innerHTML='<div class="empty">Nessun acquisto nello storico.</div>';return}
+  root.innerHTML=items.map(i=>`<div class="itemRow">
+    <button class="check done" data-restore="${i.id}">✓</button>
+    <div style="flex:1;min-width:0">
+      <div class="itemName muted">${esc(i.name)}</div>
+      <div class="itemMeta">${esc(i.place_name)} · acquistato</div>
+    </div>
+  </div>`).join("");
+  root.querySelectorAll("[data-restore]").forEach(b=>b.onclick=async()=>{
+    await rpc("shopping_v2_toggle_item",{p_item_id:b.dataset.restore,p_token:workspace.token});
+    await load();
+    toast("Rimesso tra gli acquisti");
+  });
 }
 function pendingItems(placeId=null){
   return state.items.filter(i=>!i.purchased&&i.needed_date<=today()&&(!placeId||i.place_id===placeId));
