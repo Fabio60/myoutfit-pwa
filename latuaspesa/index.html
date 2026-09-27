@@ -53,6 +53,12 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
     <button class="btn full" id="openPendingBtn" style="background:#fff;color:#007aff">Mostra cosa comprare</button>
   </div>
 
+  <div class="card" id="suggestionsCard">
+    <div class="sectionTitle">Acquisti frequenti</div>
+    <div class="muted small">Ti suggeriamo i prodotti che compri spesso e che non sono già in sospeso.</div>
+    <div id="suggestionsList" style="margin-top:10px"></div>
+  </div>
+
   <div class="card">
     <div class="sectionTitle">Luoghi</div>
     <div class="btnRow">
@@ -147,7 +153,7 @@ const SUPABASE_KEY="sb_publishable_waNH0xJIs-giJ7YNsXV-sw_t_H_UtS5";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
 const STORE="latuaspesa_workspace_v2";
-let workspace=null,state={places:[],items:[]},poll=null,activeSwipe=null,isSwiping=false;
+let workspace=null,state={places:[],items:[],suggestions:[]},poll=null,activeSwipe=null,isSwiping=false;
 
 function today(){return new Date().toISOString().slice(0,10)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -179,7 +185,8 @@ async function load(){
   try{
     $("#syncStatus").textContent="Sincronizzazione…";
     const d=await rpc("shopping_v2_get",{p_list_id:workspace.id,p_token:workspace.token});
-    state={places:d?.places||[],items:d?.items||[]};
+    const s=await rpc("shopping_v2_suggestions",{p_list_id:workspace.id,p_token:workspace.token,p_place_id:null});
+    state={places:d?.places||[],items:d?.items||[],suggestions:s||[]};
     if(!isSwiping)render();
   }catch(e){
     $("#syncStatus").textContent="Problema di sincronizzazione · tocca per riprovare";
@@ -188,7 +195,7 @@ async function load(){
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderAllItems();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderPendingCount();
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
@@ -220,6 +227,23 @@ function setupSwipe(el){
       if(activeSwipe===key)activeSwipe=null;
       track.style.transform="translateX(0)";
     }
+  });
+}
+function renderSuggestions(){
+  const root=$("#suggestionsList");
+  const selected=$("#goingPlaceSelect")?.value||"";
+  const list=state.suggestions.filter(s=>!selected||s.place_id===selected);
+  if(!list.length){root.innerHTML='<div class="empty" style="padding:18px 8px">Nessun suggerimento ancora. Dopo alcuni acquisti ricorrenti compariranno qui.</div>';return}
+  root.innerHTML=list.map(s=>`<div class="itemRow">
+    <div style="flex:1;min-width:0">
+      <div class="itemName">⭐ ${esc(s.name)}</div>
+      <div class="itemMeta">${esc(s.place_name)} · acquistato ${s.times_bought} volte</div>
+    </div>
+    <button class="mini" data-add-suggestion="${esc(s.name)}" data-place="${s.place_id||""}">Aggiungi</button>
+  </div>`).join("");
+  root.querySelectorAll("[data-add-suggestion]").forEach(b=>b.onclick=async()=>{
+    await rpc("shopping_v2_add_item",{p_list_id:workspace.id,p_token:workspace.token,p_place_id:b.dataset.place||null,p_name:b.dataset.addSuggestion,p_needed_date:today()});
+    await load();toast("Aggiunto alla prossima spesa");
   });
 }
 function renderPlaces(){
@@ -398,7 +422,7 @@ async function boot(){
   $("#closeRecipeBtn").onclick=()=>$("#recipeSheet").classList.add("hidden");
   $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
-  $("#goingPlaceSelect").onchange=renderPendingCount;
+  $("#goingPlaceSelect").onchange=()=>{renderPendingCount();renderSuggestions()};
   $("#openPendingBtn").onclick=async()=>{await load();renderPendingGroups();$("#pendingSheet").classList.remove("hidden")};
   $("#closePendingBtn").onclick=()=>$("#pendingSheet").classList.add("hidden");
   $("#shareBtn").onclick=openShare;$("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
