@@ -116,7 +116,16 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
     <div class="card">
       <div class="sectionTitle">Aggiungi da ricetta</div>
       <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta oppure scatta/carica una foto leggibile degli ingredienti.</div>
-      <input id="recipePhotoInput" class="field" type="file" accept="image/*" capture="environment">
+      <div class="grid2">
+  <div>
+    <label>Scegli dalla libreria</label>
+    <input id="recipePhotoInput" class="field" type="file" accept="image/*">
+  </div>
+  <div>
+    <label>Scatta una foto</label>
+    <input id="recipeCameraInput" class="field" type="file" accept="image/*" capture="environment">
+  </div>
+</div>
       <div style="height:8px"></div>
       <button class="btn secondary full" id="readRecipePhotoBtn">📷 Leggi ingredienti dalla foto</button>
       <div id="recipeOcrStatus" class="muted small hidden" style="margin-top:8px"></div>
@@ -652,7 +661,8 @@ function extractIngredients(text){
   }).map(x=>x.replace(/^[-•*]\s*/,"").trim()).filter(Boolean).slice(0,80);
 }
 async function readRecipePhoto(){
-  const input=$("#recipePhotoInput"),file=input.files?.[0],status=$("#recipeOcrStatus");
+  const library=$("#recipePhotoInput"),camera=$("#recipeCameraInput");
+  const file=library.files?.[0]||camera.files?.[0],status=$("#recipeOcrStatus");
   if(!file){toast("Seleziona o scatta una foto");return}
   if(!window.Tesseract){alert("Modulo OCR non disponibile. Riprova con connessione Internet.");return}
   status.classList.remove("hidden");
