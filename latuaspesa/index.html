@@ -98,6 +98,30 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   </div>
 </div>
 
+<div id="editItemSheet" class="sheet hidden">
+  <div class="sheetbox">
+    <div class="sectionTitle">Modifica prodotto</div>
+    <label>Prodotto</label>
+    <input id="editItemName" class="field">
+    <div style="height:10px"></div>
+    <div class="grid2">
+      <div>
+        <label>Luogo</label>
+        <select id="editItemPlace" class="field"></select>
+      </div>
+      <div>
+        <label>Data</label>
+        <input id="editItemDate" class="field" type="date">
+      </div>
+    </div>
+    <div style="height:12px"></div>
+    <div class="btnRow">
+      <button class="btn secondary" id="cancelEditItemBtn">Annulla</button>
+      <button class="btn" id="saveEditItemBtn">Salva</button>
+    </div>
+  </div>
+</div>
+
 <div id="recipeSheet" class="sheet hidden">
   <div class="sheetbox">
     <div class="sectionTitle">Aggiungi da ricetta</div>
@@ -153,7 +177,7 @@ const SUPABASE_KEY="sb_publishable_waNH0xJIs-giJ7YNsXV-sw_t_H_UtS5";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
 const STORE="latuaspesa_workspace_v2";
-let workspace=null,state={places:[],items:[],suggestions:[]},poll=null,activeSwipe=null,isSwiping=false;
+let workspace=null,state={places:[],items:[],suggestions:[]},poll=null,activeSwipe=null,isSwiping=false,editingItemId=null;
 
 function today(){return new Date().toISOString().slice(0,10)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -355,19 +379,27 @@ async function addProduct(){
     $("#productInput").value="";await load();toast("Prodotto aggiunto");
   }catch(e){alert("Impossibile aggiungere il prodotto.")}
 }
-async function editItem(id){
+function editItem(id){
   const i=state.items.find(x=>x.id===id);if(!i)return;
-  const name=prompt("Prodotto:",i.name);if(name===null||!name.trim())return;
-  const placeName=prompt("Luogo (scrivi esattamente il nome, oppure lascia vuoto):",i.place_name==="Senza luogo"?"":i.place_name);if(placeName===null)return;
-  const date=prompt("Data (AAAA-MM-GG):",i.needed_date);if(date===null)return;
-  let placeId=null;
-  if(placeName.trim()){
-    const p=state.places.find(x=>x.name.toLowerCase()===placeName.trim().toLowerCase());
-    if(!p){alert("Luogo non trovato. Aggiungilo prima nella sezione Luoghi.");return}
-    placeId=p.id;
-  }
-  activeSwipe=null;await rpc("shopping_v2_edit_item",{p_item_id:id,p_token:workspace.token,p_place_id:placeId,p_name:name.trim(),p_needed_date:date});
-  await load()
+  editingItemId=id;
+  $("#editItemName").value=i.name;
+  $("#editItemDate").value=i.needed_date;
+  $("#editItemPlace").innerHTML='<option value="">Senza luogo</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  $("#editItemPlace").value=i.place_id||"";
+  $("#editItemSheet").classList.remove("hidden");
+}
+async function saveEditItem(){
+  const i=state.items.find(x=>x.id===editingItemId);if(!i)return;
+  const name=$("#editItemName").value.trim();
+  const placeId=$("#editItemPlace").value||null;
+  const date=$("#editItemDate").value||i.needed_date;
+  if(!name)return;
+  activeSwipe=null;
+  await rpc("shopping_v2_edit_item",{p_item_id:i.id,p_token:workspace.token,p_place_id:placeId,p_name:name,p_needed_date:date});
+  editingItemId=null;
+  $("#editItemSheet").classList.add("hidden");
+  await load();
+  toast("Prodotto modificato");
 }
 async function deleteItem(id){
   const i=state.items.find(x=>x.id===id);if(!i)return;
@@ -454,6 +486,8 @@ async function boot(){
   $("#placeInput").addEventListener("keydown",e=>{if(e.key==="Enter")addPlace()});
   $("#addProductBtn").onclick=addProduct;
   $("#openRecipeBtn").onclick=()=>$("#recipeSheet").classList.remove("hidden");
+  $("#cancelEditItemBtn").onclick=()=>{editingItemId=null;$("#editItemSheet").classList.add("hidden")};
+  $("#saveEditItemBtn").onclick=saveEditItem;
   $("#closeRecipeBtn").onclick=()=>$("#recipeSheet").classList.add("hidden");
   $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
