@@ -147,7 +147,7 @@ const SUPABASE_KEY="sb_publishable_waNH0xJIs-giJ7YNsXV-sw_t_H_UtS5";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
 const STORE="latuaspesa_workspace_v2";
-let workspace=null,state={places:[],items:[]},poll=null;
+let workspace=null,state={places:[],items:[]},poll=null,activeSwipe=null,isSwiping=false;
 
 function today(){return new Date().toISOString().slice(0,10)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -180,7 +180,7 @@ async function load(){
     $("#syncStatus").textContent="Sincronizzazione…";
     const d=await rpc("shopping_v2_get",{p_list_id:workspace.id,p_token:workspace.token});
     state={places:d?.places||[],items:d?.items||[]};
-    render();
+    if(!isSwiping)render();
   }catch(e){
     $("#syncStatus").textContent="Problema di sincronizzazione · tocca per riprovare";
     console.error(e)
@@ -192,10 +192,35 @@ function render(){
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
-  const track=el.querySelector(".swipeTrack");let startX=0,currentX=0,drag=false;
-  el.addEventListener("touchstart",e=>{startX=e.touches[0].clientX;currentX=startX;drag=true},{passive:true});
-  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-190,Math.min(0,currentX-startX));track.style.transition="none";track.style.transform=`translateX(${dx}px)`},{passive:true});
-  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;track.style.transition="transform .18s ease";track.style.transform=dx<-55?"translateX(-190px)":"translateX(0)"});
+  const track=el.querySelector(".swipeTrack");
+  const key=el.dataset.place?("place:"+el.dataset.place):("item:"+el.dataset.item);
+  if(activeSwipe===key)track.style.transform="translateX(-190px)";
+
+  let startX=0,currentX=0,drag=false;
+  el.addEventListener("touchstart",e=>{
+    startX=e.touches[0].clientX;currentX=startX;drag=true;isSwiping=true;
+  },{passive:true});
+  el.addEventListener("touchmove",e=>{
+    if(!drag)return;
+    currentX=e.touches[0].clientX;
+    const dx=Math.max(-190,Math.min(0,currentX-startX+(activeSwipe===key?-190:0)));
+    track.style.transition="none";
+    track.style.transform=`translateX(${dx}px)`;
+  },{passive:true});
+  el.addEventListener("touchend",()=>{
+    if(!drag)return;
+    drag=false;isSwiping=false;
+    const dx=currentX-startX;
+    const shouldOpen=(activeSwipe===key)?dx>-40:dx<-55;
+    track.style.transition="transform .18s ease";
+    if(shouldOpen){
+      activeSwipe=key;
+      track.style.transform="translateX(-190px)";
+    }else{
+      if(activeSwipe===key)activeSwipe=null;
+      track.style.transform="translateX(0)";
+    }
+  });
 }
 function renderPlaces(){
   const root=$("#placesList");
@@ -291,12 +316,12 @@ async function addPlace(){
 async function editPlace(id){
   const p=state.places.find(x=>x.id===id);if(!p)return;
   const name=prompt("Nome del luogo:",p.name);if(name===null||!name.trim())return;
-  await rpc("shopping_v2_edit_place",{p_place_id:id,p_token:workspace.token,p_name:name.trim()});await load()
+  activeSwipe=null;await rpc("shopping_v2_edit_place",{p_place_id:id,p_token:workspace.token,p_name:name.trim()});await load()
 }
 async function deletePlace(id){
   const p=state.places.find(x=>x.id===id);if(!p)return;
   if(!confirm("Eliminare “"+p.name+"”? I prodotti già associati resteranno memorizzati come “Senza luogo”."))return;
-  await rpc("shopping_v2_delete_place",{p_place_id:id,p_token:workspace.token});await load()
+  activeSwipe=null;await rpc("shopping_v2_delete_place",{p_place_id:id,p_token:workspace.token});await load()
 }
 async function addProduct(){
   const name=$("#productInput").value.trim(),place=$("#placeSelect").value||null,date=$("#needDate").value||today();
@@ -317,13 +342,13 @@ async function editItem(id){
     if(!p){alert("Luogo non trovato. Aggiungilo prima nella sezione Luoghi.");return}
     placeId=p.id;
   }
-  await rpc("shopping_v2_edit_item",{p_item_id:id,p_token:workspace.token,p_place_id:placeId,p_name:name.trim(),p_needed_date:date});
+  activeSwipe=null;await rpc("shopping_v2_edit_item",{p_item_id:id,p_token:workspace.token,p_place_id:placeId,p_name:name.trim(),p_needed_date:date});
   await load()
 }
 async function deleteItem(id){
   const i=state.items.find(x=>x.id===id);if(!i)return;
   if(!confirm("Eliminare “"+i.name+"”?"))return;
-  await rpc("shopping_v2_delete_item",{p_item_id:id,p_token:workspace.token});await load()
+  activeSwipe=null;await rpc("shopping_v2_delete_item",{p_item_id:id,p_token:workspace.token});await load()
 }
 function extractIngredients(text){
   const raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
