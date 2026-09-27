@@ -1,0 +1,8 @@
+{
+  "app_id":"latuaspesa",
+  "display_name":"LaTuaSpesa",
+  "runtime_version":1,
+  "features":["shared_lists","history","add","edit","delete","purchased","qr_share"],
+  "auth":"token_link",
+  "style":"ios"
+}
