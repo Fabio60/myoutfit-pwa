@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./icon.svg">
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;color:#111;background:#f2f2f7}
-*{box-sizing:border-box}body{margin:0;background:#f2f2f7;min-height:100vh}.app{max-width:760px;margin:auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 30px)}
+*{box-sizing:border-box}body{margin:0;background:#f2f2f7;min-height:100vh}.app{max-width:760px;margin:auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 110px)}
 .top{display:flex;align-items:flex-start;gap:12px;margin:4px 2px 18px}.brand{font-size:34px;font-weight:800;letter-spacing:-1.2px}.sub{font-size:15px;color:#6e6e73;margin-top:3px}
 .card{background:#fff;border-radius:22px;padding:16px;margin:12px 0}.sectionTitle{font-size:21px;font-weight:800;margin-bottom:12px}.muted{color:#8e8e93}.small{font-size:13px}
 .btn{border:0;border-radius:16px;min-height:48px;padding:12px 16px;background:#007aff;color:#fff;font-size:17px;font-weight:700}.btn.secondary{background:#e9e9ee;color:#007aff}.btn.danger{background:#ff3b30}.btn.full{width:100%}.btnRow{display:flex;gap:10px;flex-wrap:wrap}.field{width:100%;border:0;background:#f2f2f7;border-radius:14px;padding:13px 14px;font-size:17px;outline:none}.field:focus{box-shadow:0 0 0 2px #007aff33}
@@ -23,7 +23,10 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 .hidden{display:none!important}.sheet{position:fixed;inset:0;background:rgba(0,0,0,.28);display:flex;align-items:flex-end;justify-content:center;padding:14px;z-index:20}.sheetbox{width:min(720px,100%);background:#fff;border-radius:24px;padding:20px;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:env(safe-area-inset-bottom)}
 .empty{text-align:center;padding:30px 12px;color:#8e8e93}.topActions{display:flex;gap:8px;margin-left:auto}.iconbtn{border:0;background:#e9e9ee;color:#007aff;border-radius:14px;padding:10px 12px;font-size:15px;font-weight:700}
 .summaryBtn{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:0;display:flex;align-items:center;gap:12px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 24px);background:#222;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;z-index:50}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 86px);background:#222;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;z-index:50}
+.tabPanel{display:block}.tabPanel.hidden{display:none!important}
+.bottomNav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);background:rgba(242,242,247,.96);backdrop-filter:blur(18px);border-top:1px solid #d1d1d6;z-index:40}
+.navBtn{border:0;border-radius:16px;min-height:52px;background:#e9e9ee;color:#6e6e73;font-size:15px;font-weight:800}.navBtn.active{background:#007aff;color:#fff}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.brand{font-size:32px}.btnRow>*{flex:1}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -39,6 +42,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   </div>
   <div id="syncStatus" class="muted small" style="margin:-8px 4px 8px">Sincronizzazione…</div>
 
+  <div id="currentPanel" class="tabPanel">
   <div class="hero" style="display:block">
     <div style="display:flex;align-items:center;gap:12px">
       <div class="heroText">
@@ -92,16 +96,32 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   </div>
 
   <div class="card">
-    <div class="sectionTitle">Prodotti programmati</div>
-    <div class="muted small">Qui vedi solo i prodotti ancora da acquistare, compresi quelli futuri e gli arretrati.</div>
+    <div class="sectionTitle">Prodotti da Acquistare</div>
+    <div class="muted small">Prodotti ancora da acquistare, compresi quelli futuri e gli arretrati.</div>
     <div id="allItems" style="margin-top:10px"></div>
   </div>
 
   <div class="card">
-    <div class="sectionTitle">Storico acquisti</div>
-    <div class="muted small">Quando segni un prodotto come acquistato, viene spostato qui.</div>
+    <div class="sectionTitle">Prodotti Acquistati</div>
+    <div class="muted small">Qui restano i prodotti spuntati durante la spesa corrente.</div>
     <div id="historyItems" style="margin-top:10px"></div>
+    <button class="btn full" id="finishShoppingBtn" style="margin-top:12px">Spesa terminata</button>
   </div>
+  </div>
+
+  <div id="historyPanel" class="tabPanel hidden">
+    <div class="card">
+      <div class="sectionTitle">Storico Acquisti</div>
+      <label>Seleziona una data</label>
+      <input id="historyDate" class="field" type="date">
+      <div id="historyByDate" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottomNav">
+  <button class="navBtn active" id="navCurrent">Spesa</button>
+  <button class="navBtn" id="navHistory">Storico Acquisti</button>
 </div>
 
 <div id="editItemSheet" class="sheet hidden">
@@ -225,7 +245,7 @@ async function load(){
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderHistoryByDate();renderPendingCount();
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
@@ -338,8 +358,8 @@ function renderAllItems(){
 
 function renderHistoryItems(){
   const root=$("#historyItems");
-  const items=state.items.filter(i=>i.purchased).sort((a,b)=>(b.purchased_at||"").localeCompare(a.purchased_at||""));
-  if(!items.length){root.innerHTML='<div class="empty">Nessun acquisto nello storico.</div>';return}
+  const items=state.items.filter(i=>i.purchased&&!i.archived_at).sort((a,b)=>(b.purchased_at||"").localeCompare(a.purchased_at||""));
+  if(!items.length){root.innerHTML='<div class="empty">Nessun prodotto acquistato nella spesa corrente.</div>';return}
   root.innerHTML=items.map(i=>`<div class="itemRow">
     <button class="check done" data-restore="${i.id}">✓</button>
     <div style="flex:1;min-width:0">
@@ -352,6 +372,38 @@ function renderHistoryItems(){
     await load();
     toast("Rimesso tra gli acquisti");
   });
+}
+function renderHistoryByDate(){
+  const root=$("#historyByDate");
+  if(!root)return;
+  const d=$("#historyDate")?.value||today();
+  const items=state.items.filter(i=>i.archived_at && String(i.archived_at).slice(0,10)===d)
+    .sort((a,b)=>a.place_name.localeCompare(b.place_name)||a.name.localeCompare(b.name));
+  if(!items.length){root.innerHTML='<div class="empty">Nessun acquisto registrato in questa data.</div>';return}
+  const groups={};
+  for(const i of items)(groups[i.place_name]??=[]).push(i);
+  root.innerHTML=Object.entries(groups).map(([place,arr])=>`
+    <div class="group">
+      <div class="groupTitle">${esc(place)} <span class="pill">${arr.length}</span></div>
+      ${arr.map(i=>`<div class="itemRow"><div class="itemName">${esc(i.name)}</div></div>`).join("")}
+    </div>`).join("");
+}
+function switchTab(which){
+  const hist=which==="history";
+  $("#currentPanel").classList.toggle("hidden",hist);
+  $("#historyPanel").classList.toggle("hidden",!hist);
+  $("#navCurrent").classList.toggle("active",!hist);
+  $("#navHistory").classList.toggle("active",hist);
+  if(hist)renderHistoryByDate();
+}
+async function finishShopping(){
+  const currentBought=state.items.filter(i=>i.purchased&&!i.archived_at).length;
+  if(!currentBought){toast("Nessun prodotto acquistato da archiviare");return}
+  if(!confirm("Terminare la spesa e spostare "+currentBought+" prodotti nello Storico Acquisti?"))return;
+  const n=await rpc("shopping_v2_finish",{p_list_id:workspace.id,p_token:workspace.token});
+  await load();
+  $("#historyDate").value=today();
+  toast(n+" prodotti archiviati");
 }
 function pendingItems(placeId=null){
   return state.items.filter(i=>!i.purchased&&i.needed_date<=today()&&(!placeId||i.place_id===placeId));
@@ -516,6 +568,11 @@ async function boot(){
   $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
   $("#goingPlaceSelect").onchange=()=>{renderPendingCount();renderSuggestions()};
+  $("#historyDate").value=today();
+  $("#historyDate").onchange=renderHistoryByDate;
+  $("#finishShoppingBtn").onclick=finishShopping;
+  $("#navCurrent").onclick=()=>switchTab("current");
+  $("#navHistory").onclick=()=>switchTab("history");
   $("#openPendingBtn").onclick=async()=>{await load();renderPendingGroups();$("#pendingSheet").classList.remove("hidden")};
   $("#closePendingBtn").onclick=()=>$("#pendingSheet").classList.add("hidden");
   $("#shareBtn").onclick=openShare;$("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
