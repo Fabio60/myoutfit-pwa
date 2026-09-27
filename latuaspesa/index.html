@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7">
+<title>LaTuaSpesa</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.svg">
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;color:#111;background:#f2f2f7}
+*{box-sizing:border-box} body{margin:0;min-height:100vh;background:#f2f2f7}
+.app{max-width:720px;margin:auto;min-height:100vh;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 30px)}
+.top{display:flex;justify-content:space-between;align-items:center;margin:6px 2px 18px}.brand{font-size:32px;font-weight:800;letter-spacing:-1px}
+.sub{color:#6e6e73;font-size:14px;margin-top:2px}.card{background:white;border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.btn{border:0;border-radius:14px;padding:13px 16px;font-size:17px;font-weight:700;background:#007aff;color:white;width:100%}.btn.secondary{background:#e9e9ee;color:#007aff}.btn.danger{background:#fff0f0;color:#ff3b30}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{width:100%;border:0;background:#f2f2f7;border-radius:12px;padding:13px 14px;font-size:17px;outline:none}
+.row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #ececf0}.row:last-child{border-bottom:0}
+.check{width:26px;height:26px;border:2px solid #c7c7cc;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.check.done{background:#34c759;border-color:#34c759;color:white}
+.itemname{font-size:18px;flex:1}.itemname.done{text-decoration:line-through;color:#8e8e93}.more{border:0;background:transparent;font-size:24px;color:#8e8e93;padding:4px 8px}
+.muted{color:#8e8e93}.small{font-size:13px}.listCard{cursor:pointer}.listTitle{font-size:18px;font-weight:700}.pill{display:inline-block;background:#eef6ff;color:#007aff;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
+.headerList{display:flex;align-items:center;gap:8px;margin-bottom:8px}.back{border:0;background:transparent;color:#007aff;font-size:17px;padding:8px 8px 8px 0}
+.actions{display:flex;gap:8px}.iconbtn{border:0;background:#e9e9ee;border-radius:12px;padding:10px 12px;font-size:16px;color:#007aff;font-weight:700}
+.addbar{display:flex;gap:8px;position:sticky;bottom:calc(env(safe-area-inset-bottom) + 8px);background:rgba(242,242,247,.94);backdrop-filter:blur(18px);padding:10px 0}
+.addbar .field{background:white}.empty{text-align:center;padding:34px 12px;color:#8e8e93}.hidden{display:none!important}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.25);display:flex;align-items:flex-end;justify-content:center;padding:14px;z-index:10}
+.sheetbox{background:white;width:min(680px,100%);border-radius:24px;padding:20px;margin-bottom:env(safe-area-inset-bottom)}
+.qrwrap{display:grid;place-items:center;padding:18px}.qrwrap canvas,.qrwrap img{border-radius:12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 92px);background:#222;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;z-index:30}
+h2{margin:0 0 12px;font-size:22px} label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}
+@media (display-mode:standalone){.installHint{display:none}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <section id="home">
+    <div class="top"><div><div class="brand" id="appTitle">LaTuaSpesa</div><div class="sub">La lista della spesa, insieme.</div></div></div>
+    <div class="card">
+      <h2>Nuova lista</h2>
+      <label>Nome</label><input id="newTitle" class="field" value="La mia spesa" maxlength="60">
+      <div style="height:10px"></div>
+      <label>Data</label><input id="newDate" class="field" type="date">
+      <div style="height:12px"></div>
+      <button class="btn" id="createBtn">Crea lista</button>
+    </div>
+    <div class="card">
+      <h2>Le tue liste</h2>
+      <div id="history"></div>
+    </div>
+    <div class="card installHint">
+      <div class="listTitle">Tienila sulla Home</div>
+      <div class="muted small" style="margin-top:5px">Su iPhone: Condividi → Aggiungi alla schermata Home. Su Android usa “Installa app” dal browser.</div>
+    </div>
+  </section>
+
+  <section id="listView" class="hidden">
+    <div class="headerList">
+      <button class="back" id="backBtn">‹ Liste</button>
+      <div style="flex:1"></div>
+      <div class="actions">
+        <button class="iconbtn" id="editListBtn">Modifica</button>
+        <button class="iconbtn" id="shareBtn">Condividi</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="listTitle" id="listTitle"></div>
+      <div class="muted small" id="listDate" style="margin-top:4px"></div>
+      <div id="items" style="margin-top:10px"></div>
+    </div>
+    <div class="addbar">
+      <input id="itemInput" class="field" placeholder="Aggiungi prodotto…" autocomplete="off">
+      <button class="btn" id="addBtn" style="width:auto">+</button>
+    </div>
+  </section>
+</div>
+
+<div id="shareSheet" class="sheet hidden">
+  <div class="sheetbox">
+    <h2>Condividi la lista</h2>
+    <div class="muted">Fai scansionare questo QR. Chi lo apre può usare la stessa lista, senza account.</div>
+    <div id="qrcode" class="qrwrap"></div>
+    <div class="grid">
+      <button class="btn secondary" id="copyBtn">Copia link</button>
+      <button class="btn" id="nativeShareBtn">Condividi</button>
+    </div>
+    <div style="height:8px"></div><button class="btn secondary" id="closeShareBtn">Chiudi</button>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+const SUPABASE_URL="https://bqdwkxxdkoimqvyuuijz.supabase.co";
+const SUPABASE_KEY="sb_publishable_waNH0xJIs-giJ7YNsXV-sw_t_H_UtS5";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s);
+let current=null, pollTimer=null;
+const storeKey="latuaspesa_lists_v1";
+
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(d){try{return new Intl.DateTimeFormat("it-IT",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(d+"T12:00:00"))}catch{return d}}
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.remove("hidden");setTimeout(()=>e.classList.add("hidden"),1800)}
+function getHistory(){try{return JSON.parse(localStorage.getItem(storeKey)||"[]")}catch{return []}}
+function saveHistory(entry){
+  const arr=getHistory().filter(x=>x.id!==entry.id);
+  arr.unshift(entry); localStorage.setItem(storeKey,JSON.stringify(arr.slice(0,100))); renderHistory();
+}
+function renderHistory(){
+  const root=$("#history"), arr=getHistory();
+  if(!arr.length){root.innerHTML='<div class="empty">Nessuna lista ancora.</div>';return}
+  root.innerHTML=arr.map(x=>`<div class="row listCard" data-id="${x.id}">
+    <div style="flex:1"><div class="listTitle">${esc(x.title||"La mia spesa")}</div><div class="muted small">${fmtDate(x.date)}</div></div>
+    <span class="pill">Apri</span></div>`).join("");
+  root.querySelectorAll(".listCard").forEach(el=>el.onclick=()=>openSaved(el.dataset.id));
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function rpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw error;return data}
+
+async function createList(){
+  $("#createBtn").disabled=true;
+  try{
+    const title=$("#newTitle").value.trim()||"La mia spesa", date=$("#newDate").value||today();
+    const d=await rpc("shopping_create_list",{p_title:title,p_date:date});
+    current={id:d.id,token:d.token,title:d.title,date:d.shopping_date};
+    saveHistory(current); setUrl(); showList(); await loadList();
+  }catch(e){alert("Errore: "+e.message)}finally{$("#createBtn").disabled=false}
+}
+function openSaved(id){const x=getHistory().find(v=>v.id===id);if(!x)return;current=x;setUrl();showList();loadList()}
+function setUrl(){
+  const u=new URL(location.href);u.searchParams.set("list",current.id);u.searchParams.set("key",current.token);
+  history.replaceState({},'',u);
+}
+function clearUrl(){history.replaceState({},'',location.pathname)}
+function showList(){
+  $("#home").classList.add("hidden");$("#listView").classList.remove("hidden");
+  startPolling();
+}
+function showHome(){
+  current=null;clearInterval(pollTimer);pollTimer=null;clearUrl();
+  $("#listView").classList.add("hidden");$("#home").classList.remove("hidden");renderHistory();
+}
+async function loadList(quiet=false){
+  if(!current)return;
+  try{
+    const d=await rpc("shopping_get_list",{p_list_id:current.id,p_token:current.token});
+    current.title=d.title;current.date=d.shopping_date;saveHistory(current);
+    $("#listTitle").textContent=d.title;$("#listDate").textContent=fmtDate(d.shopping_date);
+    renderItems(d.items||[]);
+  }catch(e){if(!quiet)alert("Impossibile aprire la lista. Il QR o il link potrebbero non essere validi.");clearInterval(pollTimer)}
+}
+function renderItems(items){
+  const root=$("#items");
+  if(!items.length){root.innerHTML='<div class="empty">Aggiungi il primo prodotto.</div>';return}
+  root.innerHTML=items.map(i=>`<div class="row">
+    <button class="check ${i.purchased?"done":""}" data-toggle="${i.id}">${i.purchased?"✓":""}</button>
+    <div class="itemname ${i.purchased?"done":""}">${esc(i.name)}</div>
+    <button class="more" data-more="${i.id}" data-name="${encodeURIComponent(i.name)}">•••</button>
+  </div>`).join("");
+  root.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=async()=>{await rpc("shopping_toggle_item",{p_item_id:b.dataset.toggle,p_token:current.token});loadList(true)});
+  root.querySelectorAll("[data-more]").forEach(b=>b.onclick=()=>itemMenu(b.dataset.more,decodeURIComponent(b.dataset.name)));
+}
+async function addItem(){
+  const input=$("#itemInput"), name=input.value.trim();if(!name)return;
+  input.value="";
+  try{await rpc("shopping_add_item",{p_list_id:current.id,p_token:current.token,p_name:name});await loadList(true)}
+  catch(e){toast("Non aggiunto")}
+}
+async function itemMenu(id,name){
+  const next=prompt("Modifica prodotto.\nLascia vuoto e premi OK per eliminare:",name);
+  if(next===null)return;
+  if(next.trim()===""){
+    if(confirm("Eliminare “"+name+"”?")){await rpc("shopping_delete_item",{p_item_id:id,p_token:current.token});await loadList(true)}
+  }else{
+    await rpc("shopping_edit_item",{p_item_id:id,p_token:current.token,p_name:next.trim()});await loadList(true)
+  }
+}
+async function editList(){
+  const title=prompt("Nome della lista:",current.title);if(title===null)return;
+  const date=prompt("Data (AAAA-MM-GG):",current.date);if(date===null)return;
+  try{await rpc("shopping_update_list",{p_list_id:current.id,p_token:current.token,p_title:title,p_date:date});await loadList()}
+  catch(e){alert("Data o nome non validi.")}
+}
+function shareUrl(){const u=new URL(location.origin+location.pathname);u.searchParams.set("list",current.id);u.searchParams.set("key",current.token);return u.toString()}
+function openShare(){
+  const url=shareUrl();$("#shareSheet").classList.remove("hidden");$("#qrcode").innerHTML="";
+  new QRCode($("#qrcode"),{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
+}
+async function nativeShare(){const url=shareUrl();if(navigator.share){await navigator.share({title:"LaTuaSpesa",text:"Apri la nostra lista della spesa",url})}else{await navigator.clipboard.writeText(url);toast("Link copiato")}}
+function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>loadList(true),3000)}
+async function boot(){
+  $("#newDate").value=today();renderHistory();
+  $("#createBtn").onclick=createList;$("#backBtn").onclick=showHome;$("#addBtn").onclick=addItem;
+  $("#itemInput").addEventListener("keydown",e=>{if(e.key==="Enter")addItem()});
+  $("#shareBtn").onclick=openShare;$("#editListBtn").onclick=editList;
+  $("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
+  $("#copyBtn").onclick=async()=>{await navigator.clipboard.writeText(shareUrl());toast("Link copiato")};
+  $("#nativeShareBtn").onclick=nativeShare;
+  const p=new URLSearchParams(location.search), id=p.get("list"), token=p.get("key");
+  if(id&&token){
+    current={id,token,title:"Lista condivisa",date:today()};saveHistory(current);showList();await loadList();
+  }
+}
+if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js");
+boot();
+</script>
+</body></html>
