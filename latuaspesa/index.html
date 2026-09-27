@@ -70,6 +70,14 @@ h2{margin:0 0 12px;font-size:22px} label{display:block;font-size:13px;color:#6e6
       <div class="muted small" id="listDate" style="margin-top:4px"></div>
       <div id="items" style="margin-top:10px"></div>
     </div>
+    <div class="card">
+      <h2>Da una ricetta</h2>
+      <div class="muted small" style="margin-bottom:10px">Incolla il testo di una ricetta: proverò a estrarre gli ingredienti e potrai aggiungerli alla lista corrente.</div>
+      <textarea id="recipeText" class="field" rows="7" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
+      <div style="height:10px"></div>
+      <button class="btn secondary" id="extractRecipeBtn">Trova ingredienti</button>
+      <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
+    </div>
     <div class="addbar">
       <input id="itemInput" class="field" placeholder="Aggiungi prodotto…" autocomplete="off">
       <button class="btn" id="addBtn" style="width:auto">+</button>
@@ -190,6 +198,47 @@ async function addItem(){
   try{await rpc("shopping_add_item",{p_list_id:current.id,p_token:current.token,p_name:name});await loadList(true)}
   catch(e){toast("Non aggiunto")}
 }
+
+function extractIngredients(text){
+  const raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const stop=/^(procedimento|preparazione|prepara|metodo|istruzioni|note|consiglio|cottura|tempo|difficolt[aà]|servire|step|fase)\b/i;
+  const heading=/^(ingredienti|ingredients?)\s*:??\s*$/i;
+  let lines=[], inIng=false, foundHeading=false;
+  for(const line of raw){
+    if(heading.test(line)){inIng=true;foundHeading=true;continue}
+    if(inIng && stop.test(line))break;
+    if(inIng) lines.push(line);
+  }
+  if(!foundHeading) lines=raw.filter(line=>{
+    if(stop.test(line)) return false;
+    if(line.length>120) return false;
+    return /\b\d+(?:[\.,]\d+)?\s*(g|kg|ml|cl|l|gr|grammi|etto|etti|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|q\.b\.|qb)\b/i.test(line)
+      || /^[-•*]\s*/.test(line);
+  });
+  return lines
+    .map(x=>x.replace(/^[-•*]\s*/,"").replace(/^\d+[\.)]\s*/,"").trim())
+    .filter(x=>x.length>1)
+    .slice(0,60);
+}
+function showRecipePreview(){
+  const items=extractIngredients($("#recipeText").value);
+  const box=$("#recipePreview");
+  if(!items.length){box.classList.add("hidden");toast("Non trovo ingredienti chiari");return}
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="listTitle">Ingredienti trovati</div>
+    <div class="muted small" style="margin:4px 0 10px">Togli la spunta a ciò che non vuoi aggiungere.</div>
+    <div id="recipeChoices">${items.map((x,i)=>`<label class="row" style="cursor:pointer"><input type="checkbox" checked data-ri="${i}" style="width:22px;height:22px"><span class="itemname">${esc(x)}</span></label>`).join("")}</div>
+    <button class="btn" id="addRecipeItemsBtn" style="margin-top:12px">Aggiungi alla lista</button>`;
+  $("#addRecipeItemsBtn").onclick=async()=>{
+    const selected=[...box.querySelectorAll("input[data-ri]:checked")].map(ch=>items[Number(ch.dataset.ri)]);
+    if(!selected.length){toast("Nessun ingrediente selezionato");return}
+    $("#addRecipeItemsBtn").disabled=true;
+    try{
+      for(const name of selected) await rpc("shopping_add_item",{p_list_id:current.id,p_token:current.token,p_name:name});
+      $("#recipeText").value="";box.classList.add("hidden");await loadList(true);toast(selected.length+" ingredienti aggiunti");
+    }catch(e){alert("Errore durante l'aggiunta degli ingredienti.")}finally{$("#addRecipeItemsBtn")?.removeAttribute("disabled")}
+  };
+}
 async function itemMenu(id,name){
   const next=prompt("Modifica prodotto.\nLascia vuoto e premi OK per eliminare:",name);
   if(next===null)return;
@@ -225,7 +274,7 @@ async function nativeShare(){const url=shareUrl();if(navigator.share){await navi
 function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>loadList(true),3000)}
 async function boot(){
   $("#newDate").value=today();renderHistory();
-  $("#createBtn").onclick=createList;$("#backBtn").onclick=showHome;$("#addBtn").onclick=addItem;
+  $("#createBtn").onclick=createList;$("#backBtn").onclick=showHome;$("#addBtn").onclick=addItem;$("#extractRecipeBtn").onclick=showRecipePreview;
   $("#itemInput").addEventListener("keydown",e=>{if(e.key==="Enter")addItem()});
   $("#shareBtn").onclick=openShare;$("#editListBtn").onclick=editList;$("#deleteListBtn").onclick=deleteList;
   $("#closeShareBtn").onclick=()=>$("#shareSheet").classList.add("hidden");
