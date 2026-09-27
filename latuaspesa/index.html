@@ -375,16 +375,35 @@ async function deleteItem(id){
   activeSwipe=null;await rpc("shopping_v2_delete_item",{p_item_id:id,p_token:workspace.token});await load()
 }
 function extractIngredients(text){
-  const raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  let raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+
+  // Ricette copiate da siti spesso separano quantità e ingrediente su due righe:
+  // "130" + "g burro" -> "130 g burro"
+  const merged=[];
+  for(let i=0;i<raw.length;i++){
+    const line=raw[i];
+    if(/^\d+(?:[\.,]\d+)?$/.test(line) && i+1<raw.length){
+      const next=raw[i+1];
+      if(!/^\d+(?:[\.,]\d+)?$/.test(next) && !/^(per\s+|ingredienti|procedimento|preparazione)/i.test(next)){
+        merged.push(line+" "+next);
+        i++;
+        continue;
+      }
+    }
+    merged.push(line);
+  }
+  raw=merged;
+
   const noise=/^(annuncio pubblicitario|pubblicit[aà]|advertisement|sponsorizzato)$/i;
-  const section=/^(ingredienti|per la|per il|per lo|per gli|per le|per i)\b/i;
+  const section=/^(ingredienti|per\s+.+)$/i;
   const stop=/^(procedimento|preparazione|metodo|istruzioni|note|cottura|come si prepara)\b/i;
+  const known=/\b(farina|burro|zucchero|uov[aoe]|latte|tuorl[oi]|album[ei]|limone|scorza|sale|olio|acqua|gelatina|frutta\s+secca|noci?|mandorle?|nocciole?|pinoli?|lievito|vaniglia|cacao|cioccolato|panna|miele|riso|pasta|pomodor[oi]|cipoll[ae]|cipollotto|aglio|pepe|formaggio|parmigiano|mozzarella|robiola|zucchin[ae]|carote?|patate?|carne|pollo|pesce|erbe\s+aromatiche)\b/i;
+
   return raw.filter(line=>{
-    if(noise.test(line)||section.test(line)||stop.test(line)||line.length>140)return false;
+    if(noise.test(line)||section.test(line)||stop.test(line)||line.length>160)return false;
     const qty=/\b\d+(?:[\.,]\d+)?\b/.test(line);
-    const unit=/\b(g|kg|ml|cl|dl|l|gr|grammi?|etto|etti|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|tuorli?|albumi?|pizzic(?:o|hi)|q\.b\.|qb)\b/i.test(line);
-    const words=/\b(farina|burro|zucchero|uov[aoe]|latte|tuorl[oi]|limone|scorza|sale|olio|acqua|gelatina|frutta\s+secca|noci?|mandorle?|nocciole?|pinoli?|lievito|vaniglia|cacao|cioccolato|panna|miele|riso|pasta|pomodor[oi]|cipoll[ae]|aglio|pepe|formaggio|parmigiano|mozzarella|carne|pollo|pesce)\b/i.test(line);
-    return qty||unit||words||/^[-•*]\s*/.test(line);
+    const unit=/\b(g|kg|mg|ml|cl|dl|l|gr|grammi?|etto|etti|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|tuorli?|albumi?|pizzic(?:o|hi)|q\.b\.|qb)\b/i.test(line);
+    return qty||unit||known.test(line)||/^[-•*]\s*/.test(line);
   }).map(x=>x.replace(/^[-•*]\s*/,"").trim()).filter(Boolean).slice(0,80);
 }
 function showRecipePreview(){
