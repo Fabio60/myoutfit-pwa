@@ -178,6 +178,19 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   </button>
 </div>
 
+<div id="workspaceRecoverySheet" class="sheet hidden">
+  <div class="sheetbox">
+    <div class="sectionTitle">Recupera LaTuaSpesa</div>
+    <div class="muted small" style="margin-bottom:12px">Non ho trovato uno spazio già salvato su questo browser. Per evitare di crearne uno nuovo per errore, puoi incollare il link condiviso precedente oppure creare un nuovo spazio.</div>
+    <label>Link condiviso precedente</label>
+    <input id="recoveryLinkInput" class="field" placeholder="Incolla qui il link LaTuaSpesa">
+    <div style="height:10px"></div>
+    <button class="btn full" id="recoverWorkspaceBtn">Recupera spazio</button>
+    <div style="height:10px"></div>
+    <button class="btn secondary full" id="createWorkspaceBtn">Crea nuovo spazio</button>
+  </div>
+</div>
+
 <div id="historyManageSheet" class="sheet hidden">
   <div class="sheetbox">
     <div class="sectionTitle">Gestisci Storico</div>
@@ -255,24 +268,78 @@ function fmtDate(d){try{return new Intl.DateTimeFormat("it-IT",{day:"2-digit",mo
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.remove("hidden");setTimeout(()=>e.classList.add("hidden"),1800)}
 async function rpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw error;return data}
 function workspaceCode(){return workspace?.id ? workspace.id.slice(0,6).toUpperCase() : "------"}
-function saveWorkspace(){localStorage.setItem(STORE,JSON.stringify(workspace))}
+function saveWorkspace(){
+  const raw=JSON.stringify(workspace);
+  localStorage.setItem(STORE,raw);
+  localStorage.setItem("latuaspesa_workspace",raw);
+  localStorage.setItem("latuaspesa_workspace_backup",raw);
+  try{document.cookie="latuaspesa_workspace="+encodeURIComponent(raw)+"; Max-Age=31536000; Path=/; SameSite=Lax"}catch{}
+}
+function loadSavedWorkspace(){
+  for(const key of [STORE,"latuaspesa_workspace","latuaspesa_workspace_backup"]){
+    try{
+      const w=JSON.parse(localStorage.getItem(key)||"null");
+      if(w?.id&&w?.token)return w;
+    }catch{}
+  }
+  try{
+    const m=document.cookie.match(/(?:^|; )latuaspesa_workspace=([^;]+)/);
+    if(m){
+      const w=JSON.parse(decodeURIComponent(m[1]));
+      if(w?.id&&w?.token)return w;
+    }
+  }catch{}
+  return null;
+}
 function shareUrl(){const u=new URL(location.origin+location.pathname);u.searchParams.set("space",workspace.id);u.searchParams.set("key",workspace.token);return u.toString()}
 function setUrl(){history.replaceState({},'',shareUrl())}
 
 async function ensureWorkspace(){
   const p=new URLSearchParams(location.search),id=p.get("space"),token=p.get("key");
-  if(id&&token){workspace={id,token};saveWorkspace();setUrl();return}
-  try{workspace=JSON.parse(localStorage.getItem(STORE)||"null")}catch{}
-  if(workspace?.id&&workspace?.token){setUrl();return}
+  if(id&&token){workspace={id,token};saveWorkspace();setUrl();return true}
 
-  // Compatibilità con la prima versione: riusa l'ultima vecchia lista, se esiste.
+  workspace=loadSavedWorkspace();
+  if(workspace?.id&&workspace?.token){saveWorkspace();setUrl();return true}
+
+  // Compatibilità con la prima versione.
   try{
     const oldLists=JSON.parse(localStorage.getItem("latuaspesa_lists_v1")||"[]");
-    if(oldLists.length){workspace={id:oldLists[0].id,token:oldLists[0].token};saveWorkspace();setUrl();return}
+    if(oldLists.length){
+      workspace={id:oldLists[0].id,token:oldLists[0].token};
+      saveWorkspace();setUrl();return true;
+    }
   }catch{}
 
+  // Non creare più automaticamente un nuovo spazio: evita di perdere il workspace
+  // quando una nuova versione viene aperta da un browser/WebView diverso.
+  $("#workspaceRecoverySheet").classList.remove("hidden");
+  return false;
+}
+
+async function createNewWorkspace(){
   const d=await rpc("shopping_create_list",{p_title:"La mia spesa",p_date:today()});
-  workspace={id:d.id,token:d.token};saveWorkspace();setUrl();
+  workspace={id:d.id,token:d.token};
+  saveWorkspace();setUrl();
+  $("#workspaceRecoverySheet").classList.add("hidden");
+  await load();
+  toast("Nuovo spazio creato");
+}
+
+async function recoverWorkspaceFromLink(){
+  const raw=$("#recoveryLinkInput").value.trim();
+  if(!raw){toast("Incolla il link condiviso");return}
+  try{
+    const u=new URL(raw);
+    const id=u.searchParams.get("space"),token=u.searchParams.get("key");
+    if(!id||!token)throw new Error("missing");
+    workspace={id,token};
+    saveWorkspace();setUrl();
+    $("#workspaceRecoverySheet").classList.add("hidden");
+    await load();
+    toast("Spazio recuperato");
+  }catch{
+    alert("Il link non sembra essere un link LaTuaSpesa condiviso valido.");
+  }
 }
 
 async function load(){
@@ -769,8 +836,11 @@ async function boot(){
   $("#copyBtn").onclick=async()=>{await navigator.clipboard.writeText(shareUrl());toast("Link copiato")};
   $("#nativeShareBtn").onclick=nativeShare;
   $("#syncStatus").onclick=load;
-  await ensureWorkspace();await load();
-  poll=setInterval(load,1500);
+  $("#recoverWorkspaceBtn").onclick=recoverWorkspaceFromLink;
+  $("#createWorkspaceBtn").onclick=createNewWorkspace;
+  const hasWorkspace=await ensureWorkspace();
+  if(hasWorkspace)await load();
+  poll=setInterval(()=>{if(workspace)load()},1500);
   window.addEventListener("focus",load);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load()});
 }
