@@ -228,6 +228,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   <div class="sheetbox">
     <div class="sectionTitle">Condividi LaTuaSpesa</div>
     <div class="muted small">Chi apre questo QR usa lo stesso spazio condiviso, senza account.</div>
+    <div id="shareWorkspaceCode" class="pill" style="margin-top:10px"></div>
     <div id="qrcode" style="display:grid;place-items:center;padding:18px"></div>
     <div class="btnRow">
       <button class="btn secondary" id="copyBtn">Copia link</button>
@@ -253,13 +254,14 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function fmtDate(d){try{return new Intl.DateTimeFormat("it-IT",{day:"2-digit",month:"short",year:"numeric"}).format(new Date(d+"T12:00:00"))}catch{return d}}
 function toast(t){const e=$("#toast");e.textContent=t;e.classList.remove("hidden");setTimeout(()=>e.classList.add("hidden"),1800)}
 async function rpc(name,args){const {data,error}=await sb.rpc(name,args);if(error)throw error;return data}
+function workspaceCode(){return workspace?.id ? workspace.id.slice(0,6).toUpperCase() : "------"}
 function saveWorkspace(){localStorage.setItem(STORE,JSON.stringify(workspace))}
 function shareUrl(){const u=new URL(location.origin+location.pathname);u.searchParams.set("space",workspace.id);u.searchParams.set("key",workspace.token);return u.toString()}
 function setUrl(){history.replaceState({},'',shareUrl())}
 
 async function ensureWorkspace(){
   const p=new URLSearchParams(location.search),id=p.get("space"),token=p.get("key");
-  if(id&&token){workspace={id,token};saveWorkspace();return}
+  if(id&&token){workspace={id,token};saveWorkspace();setUrl();return}
   try{workspace=JSON.parse(localStorage.getItem(STORE)||"null")}catch{}
   if(workspace?.id&&workspace?.token){setUrl();return}
 
@@ -703,11 +705,13 @@ function showRecipePreview(){
 }
 function openShare(){
   $("#shareSheet").classList.remove("hidden");$("#qrcode").innerHTML="";
+  $("#shareWorkspaceCode").textContent="Spazio "+workspaceCode();
   new QRCode($("#qrcode"),{text:shareUrl(),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
 }
 async function nativeShare(){
   const url=shareUrl();
-  if(navigator.share)await navigator.share({title:"LaTuaSpesa",text:"Apri il nostro spazio spesa condiviso",url});
+  const text="Apri il nostro spazio LaTuaSpesa condiviso ("+workspaceCode()+"):\n"+url;
+  if(navigator.share)await navigator.share({title:"LaTuaSpesa",text,url});
   else{await navigator.clipboard.writeText(url);toast("Link copiato")}
 }
 
