@@ -329,16 +329,35 @@ function renderSuggestions(){
   const selected=$("#goingPlaceSelect")?.value||"";
   const list=state.suggestions.filter(s=>!selected||s.place_id===selected);
   if(!list.length){root.innerHTML='<div class="empty" style="padding:18px 8px">Nessun suggerimento ancora. Dopo alcuni acquisti ricorrenti compariranno qui.</div>';return}
-  root.innerHTML=list.map(s=>`<div class="itemRow">
-    <div style="flex:1;min-width:0">
-      <div class="itemName">⭐ ${esc(s.name)}</div>
-      <div class="itemMeta">${esc(s.place_name)} · acquistato ${s.times_bought} volte</div>
+  root.innerHTML=list.map(s=>`<div class="swipe" data-suggestion-name="${esc(s.name)}" data-suggestion-place="${s.place_id||""}">
+    <div class="swipeTrack">
+      <div class="swipeMain">
+        <div style="flex:1;min-width:0">
+          <div class="itemName">⭐ ${esc(s.name)}</div>
+          <div class="itemMeta">${esc(s.place_name)} · acquistato ${s.times_bought} volte</div>
+        </div>
+        <button class="mini" data-add-suggestion="${esc(s.name)}" data-place="${s.place_id||""}">Aggiungi</button>
+      </div>
+      <div class="swipeActions">
+        <button class="swipeAction swipeDelete" data-del-suggestion="${esc(s.name)}" data-place="${s.place_id||""}">Elimina</button>
+      </div>
     </div>
-    <button class="mini" data-add-suggestion="${esc(s.name)}" data-place="${s.place_id||""}">Aggiungi</button>
   </div>`).join("");
-  root.querySelectorAll("[data-add-suggestion]").forEach(b=>b.onclick=async()=>{
+  root.querySelectorAll(".swipe").forEach(setupSwipe);
+  root.querySelectorAll("[data-add-suggestion]").forEach(b=>b.onclick=async e=>{
+    e.stopPropagation();
     await rpc("shopping_v2_add_item",{p_list_id:workspace.id,p_token:workspace.token,p_place_id:b.dataset.place||null,p_name:b.dataset.addSuggestion,p_needed_date:today()});
     await load();toast("Aggiunto alla prossima spesa");
+  });
+  root.querySelectorAll("[data-del-suggestion]").forEach(b=>b.onclick=async e=>{
+    e.stopPropagation();
+    const name=b.dataset.delSuggestion;
+    const place=b.dataset.place||null;
+    if(!confirm("Eliminare “"+name+"” dagli Acquisti frequenti?"))return;
+    activeSwipe=null;
+    await rpc("shopping_v2_delete_suggestion",{p_list_id:workspace.id,p_token:workspace.token,p_name:name,p_place_id:place});
+    await load();
+    toast("Rimosso dagli Acquisti frequenti");
   });
 }
 function renderPlaces(){
