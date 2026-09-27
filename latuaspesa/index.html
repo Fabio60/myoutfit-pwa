@@ -27,7 +27,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 .tabPanel{display:block}.tabPanel.hidden{display:none!important}
 .bottomNav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:flex;align-items:stretch;justify-content:space-around;padding:8px 14px calc(env(safe-area-inset-bottom) + 8px);background:rgba(255,255,255,.98);backdrop-filter:blur(20px);border-top:1px solid #e5e5ea;z-index:40}
 .navBtn{flex:1;border:0;background:transparent;color:#6e6e73;min-height:64px;font-size:12px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;padding:4px 8px}
-.navBtn .navIcon{width:27px;height:27px;display:block}.navBtn .navIcon svg{width:27px;height:27px;display:block}.navBtn.active{color:#3478f6}.navBtn.active::after{display:none}.navBtn[data-tab="spesa"] .navIcon{color:#34c759}.navBtn[data-tab="storico"] .navIcon{color:#ff9500}.navBtn.active[data-tab="spesa"]{color:#34c759}.navBtn.active[data-tab="storico"]{color:#ff9500}
+.navBtn .navIcon{width:27px;height:27px;display:block}.navBtn .navIcon svg{width:27px;height:27px;display:block}.navBtn.active{color:#3478f6}.navBtn.active::after{display:none}.navBtn[data-tab="spesa"] .navIcon{color:#34c759}.navBtn[data-tab="storico"] .navIcon{color:#ff9500}.navBtn[data-tab="luoghi"] .navIcon{color:#af52de}.navBtn[data-tab="ricette"] .navIcon{color:#ff2d55}.navBtn.active[data-tab="spesa"]{color:#34c759}.navBtn.active[data-tab="storico"]{color:#ff9500}.navBtn.active[data-tab="luoghi"]{color:#af52de}.navBtn.active[data-tab="ricette"]{color:#ff2d55}
 .calendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.calNav{border:0;background:#e9e9ee;color:#007aff;border-radius:12px;width:42px;height:42px;font-size:22px;font-weight:700}.calMonth{font-size:19px;font-weight:800;text-transform:capitalize}
 .calendarWeek,.calendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;max-width:100%}.calendarWeek div{text-align:center;font-size:12px;color:#8e8e93;font-weight:700;padding:4px 0;min-width:0}.calDay{position:relative;border:0;background:#f2f2f7;border-radius:12px;width:100%;min-width:0;aspect-ratio:1/1;min-height:0;padding:0;font-size:15px;color:#111;display:flex;align-items:center;justify-content:center}.calDay.empty{visibility:hidden}.calDay.hasShop{background:#eaf4ff;color:#007aff;font-weight:800}.calDay.hasShop::after{content:"";position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#007aff}.calDay.selected{background:#007aff;color:#fff}.calDay.selected::after{background:#fff}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.brand{font-size:32px}.btnRow>*{flex:1}}
@@ -67,15 +67,6 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   </div>
 
   <div class="card">
-    <div class="sectionTitle">Luoghi</div>
-    <div class="btnRow">
-      <input id="placeInput" class="field" style="flex:1" placeholder="Es. Coop, Farmacia, Mercato, Amazon…">
-      <button class="btn" id="addPlaceBtn">Aggiungi</button>
-    </div>
-    <div id="placesList" style="margin-top:10px"></div>
-  </div>
-
-  <div class="card">
     <div class="sectionTitle">Aggiungi prodotto</div>
     <label>Prodotto</label>
     <input id="productInput" class="field" placeholder="Es. latte, pane, detersivo…">
@@ -94,10 +85,6 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
     <button class="btn full" id="addProductBtn">Aggiungi alla spesa</button>
   </div>
 
-  <div class="card" style="padding:12px 16px">
-    <button class="btn secondary full" id="openRecipeBtn">＋ Aggiungi da ricetta</button>
-  </div>
-
   <div class="card">
     <div class="sectionTitle">Prodotti da Acquistare</div>
     <div class="muted small">Prodotti ancora da acquistare, compresi quelli futuri e gli arretrati.</div>
@@ -110,6 +97,40 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
     <div id="historyItems" style="margin-top:10px"></div>
     <button class="btn full" id="finishShoppingBtn" style="margin-top:12px">Spesa terminata</button>
   </div>
+  </div>
+
+  <div id="placesPanel" class="tabPanel hidden">
+    <div class="card">
+      <div class="sectionTitle">Gestione Luoghi</div>
+      <div class="muted small">Aggiungi e gestisci i luoghi dove fai la spesa.</div>
+      <div class="btnRow" style="margin-top:12px">
+        <input id="placeInput" class="field" style="flex:1" placeholder="Es. Coop, Farmacia, Mercato, Amazon…">
+        <button class="btn" id="addPlaceBtn">Aggiungi</button>
+      </div>
+      <div id="placesList" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="recipesPanel" class="tabPanel hidden">
+    <div class="card">
+      <div class="sectionTitle">Aggiungi da ricetta</div>
+      <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta, scegli luogo e data, poi aggiungi gli ingredienti trovati.</div>
+      <textarea id="recipeText" class="field" rows="8" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
+      <div style="height:10px"></div>
+      <div class="grid2">
+        <div>
+          <label>Luogo</label>
+          <select id="recipePlaceSelect" class="field"></select>
+        </div>
+        <div>
+          <label>Data</label>
+          <input id="recipeDate" class="field" type="date">
+        </div>
+      </div>
+      <div style="height:10px"></div>
+      <button class="btn full" id="extractRecipeBtn">Trova ingredienti</button>
+      <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
+    </div>
   </div>
 
   <div id="historyPanel" class="tabPanel hidden">
@@ -133,16 +154,20 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 
 <div class="bottomNav">
   <button class="navBtn active" id="navCurrent" data-tab="spesa" aria-label="Spesa">
-    <span class="navIcon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 1.9-1.4L20 8H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="19" r="1.5" fill="currentColor"/><circle cx="17" cy="19" r="1.5" fill="currentColor"/></svg>
-    </span>
+    <span class="navIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 1.9-1.4L20 8H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="19" r="1.5" fill="currentColor"/><circle cx="17" cy="19" r="1.5" fill="currentColor"/></svg></span>
     <span>Spesa</span>
   </button>
   <button class="navBtn" id="navHistory" data-tab="storico" aria-label="Storico acquisti">
-    <span class="navIcon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </span>
+    <span class="navIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
     <span>Storico</span>
+  </button>
+  <button class="navBtn" id="navPlaces" data-tab="luoghi" aria-label="Luoghi">
+    <span class="navIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.2" fill="currentColor"/></svg></span>
+    <span>Luoghi</span>
+  </button>
+  <button class="navBtn" id="navRecipes" data-tab="ricette" aria-label="Ricette">
+    <span class="navIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3v8M10 3v8M7 7h3M8.5 11v10M16 3c-2 2.3-2 6.5 0 8.5V21M16 3v8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span>Ricette</span>
   </button>
 </div>
 
@@ -180,30 +205,6 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
       <button class="btn secondary" id="cancelEditItemBtn">Annulla</button>
       <button class="btn" id="saveEditItemBtn">Salva</button>
     </div>
-  </div>
-</div>
-
-<div id="recipeSheet" class="sheet hidden">
-  <div class="sheetbox">
-    <div class="sectionTitle">Aggiungi da ricetta</div>
-    <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta. Puoi scegliere luogo e data prima di aggiungere gli ingredienti.</div>
-    <textarea id="recipeText" class="field" rows="8" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
-    <div style="height:10px"></div>
-    <div class="grid2">
-      <div>
-        <label>Luogo</label>
-        <select id="recipePlaceSelect" class="field"></select>
-      </div>
-      <div>
-        <label>Data</label>
-        <input id="recipeDate" class="field" type="date">
-      </div>
-    </div>
-    <div style="height:10px"></div>
-    <button class="btn full" id="extractRecipeBtn">Trova ingredienti</button>
-    <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
-    <div style="height:8px"></div>
-    <button class="btn secondary full" id="closeRecipeBtn">Chiudi</button>
   </div>
 </div>
 
@@ -499,12 +500,15 @@ function shiftHistoryMonth(delta){
   renderHistoryCalendar();
 }
 function switchTab(which){
-  const hist=which==="history";
-  $("#currentPanel").classList.toggle("hidden",hist);
-  $("#historyPanel").classList.toggle("hidden",!hist);
-  $("#navCurrent").classList.toggle("active",!hist);
-  $("#navHistory").classList.toggle("active",hist);
-  if(hist){renderHistoryCalendar();renderHistoryByDate();}
+  const ids=["current","history","places","recipes"];
+  ids.forEach(id=>$("#"+id+"Panel").classList.toggle("hidden",id!==which));
+  $("#navCurrent").classList.toggle("active",which==="current");
+  $("#navHistory").classList.toggle("active",which==="history");
+  $("#navPlaces").classList.toggle("active",which==="places");
+  $("#navRecipes").classList.toggle("active",which==="recipes");
+  if(which==="history"){renderHistoryCalendar();renderHistoryByDate();}
+  if(which==="places")renderPlaces();
+  if(which==="recipes")renderRecipePlaceSelect();
 }
 async function finishShopping(){
   const currentBought=state.items.filter(i=>i.purchased&&!i.archived_at).length;
@@ -654,7 +658,7 @@ function showRecipePreview(){
     const place=$("#recipePlaceSelect").value||null,date=$("#recipeDate").value||today();
     if(!selected.length){toast("Nessun ingrediente selezionato");return}
     for(const name of selected)await rpc("shopping_v2_add_item",{p_list_id:workspace.id,p_token:workspace.token,p_place_id:place,p_name:name,p_needed_date:date});
-    $("#recipeText").value="";box.classList.add("hidden");$("#recipeSheet").classList.add("hidden");await load();toast(selected.length+" ingredienti aggiunti");
+    $("#recipeText").value="";box.classList.add("hidden");await load();toast(selected.length+" ingredienti aggiunti");
   };
 }
 function openShare(){
@@ -672,10 +676,8 @@ async function boot(){
   $("#addPlaceBtn").onclick=addPlace;
   $("#placeInput").addEventListener("keydown",e=>{if(e.key==="Enter")addPlace()});
   $("#addProductBtn").onclick=addProduct;
-  $("#openRecipeBtn").onclick=()=>$("#recipeSheet").classList.remove("hidden");
   $("#cancelEditItemBtn").onclick=()=>{editingItemId=null;$("#editItemSheet").classList.add("hidden")};
   $("#saveEditItemBtn").onclick=saveEditItem;
-  $("#closeRecipeBtn").onclick=()=>$("#recipeSheet").classList.add("hidden");
   $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
   $("#goingPlaceSelect").onchange=()=>{renderPendingCount();renderSuggestions()};
@@ -685,6 +687,8 @@ async function boot(){
   $("#finishShoppingBtn").onclick=finishShopping;
   $("#navCurrent").onclick=()=>switchTab("current");
   $("#navHistory").onclick=()=>switchTab("history");
+  $("#navPlaces").onclick=()=>switchTab("places");
+  $("#navRecipes").onclick=()=>switchTab("recipes");
   $("#manageHistoryBtn").onclick=openHistoryManage;
   $("#closeHistoryManageBtn").onclick=()=>$("#historyManageSheet").classList.add("hidden");
   $("#deleteHistoryDayBtn").onclick=deleteHistoryDay;
