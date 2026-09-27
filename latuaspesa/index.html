@@ -34,6 +34,7 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -114,7 +115,12 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   <div id="recipesPanel" class="tabPanel hidden">
     <div class="card">
       <div class="sectionTitle">Aggiungi da ricetta</div>
-      <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta, scegli luogo e data, poi aggiungi gli ingredienti trovati.</div>
+      <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta oppure scatta/carica una foto leggibile degli ingredienti.</div>
+      <input id="recipePhotoInput" class="field" type="file" accept="image/*" capture="environment">
+      <div style="height:8px"></div>
+      <button class="btn secondary full" id="readRecipePhotoBtn">📷 Leggi ingredienti dalla foto</button>
+      <div id="recipeOcrStatus" class="muted small hidden" style="margin-top:8px"></div>
+      <div style="height:10px"></div>
       <textarea id="recipeText" class="field" rows="8" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
       <div style="height:10px"></div>
       <div class="grid2">
@@ -645,6 +651,38 @@ function extractIngredients(text){
     return qty||wordQty||unit||known.test(line)||/^[-•*]\s*/.test(line);
   }).map(x=>x.replace(/^[-•*]\s*/,"").trim()).filter(Boolean).slice(0,80);
 }
+async function readRecipePhoto(){
+  const input=$("#recipePhotoInput"),file=input.files?.[0],status=$("#recipeOcrStatus");
+  if(!file){toast("Seleziona o scatta una foto");return}
+  if(!window.Tesseract){alert("Modulo OCR non disponibile. Riprova con connessione Internet.");return}
+  status.classList.remove("hidden");
+  status.textContent="Lettura della foto… 0%";
+  $("#readRecipePhotoBtn").disabled=true;
+  try{
+    const result=await Tesseract.recognize(file,"ita",{
+      logger:m=>{
+        if(m.status==="recognizing text" && typeof m.progress==="number"){
+          status.textContent="Lettura della foto… "+Math.round(m.progress*100)+"%";
+        }else if(m.status){
+          status.textContent="Preparazione OCR…";
+        }
+      }
+    });
+    const text=(result?.data?.text||"").trim();
+    if(!text){
+      status.textContent="Non sono riuscito a leggere testo dalla foto.";
+      return;
+    }
+    $("#recipeText").value=text;
+    status.textContent="Testo estratto. Controllalo e premi “Trova ingredienti”.";
+    showRecipePreview();
+  }catch(e){
+    console.error(e);
+    status.textContent="Errore nella lettura della foto.";
+  }finally{
+    $("#readRecipePhotoBtn").disabled=false;
+  }
+}
 function showRecipePreview(){
   const items=extractIngredients($("#recipeText").value),box=$("#recipePreview");
   if(!items.length){box.classList.add("hidden");toast("Non trovo ingredienti chiari");return}
@@ -679,6 +717,7 @@ async function boot(){
   $("#cancelEditItemBtn").onclick=()=>{editingItemId=null;$("#editItemSheet").classList.add("hidden")};
   $("#saveEditItemBtn").onclick=saveEditItem;
   $("#extractRecipeBtn").onclick=showRecipePreview;
+  $("#readRecipePhotoBtn").onclick=readRecipePhoto;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
   $("#goingPlaceSelect").onchange=()=>{renderPendingCount();renderSuggestions()};
   historySelectedDate=today();historyMonth=today().slice(0,7);
