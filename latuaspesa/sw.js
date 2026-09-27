@@ -1,4 +1,4 @@
-const CACHE="latuaspesa-v9";
+const CACHE="latuaspesa-v10";
 const ASSETS=["./manifest.json","./icon.svg"];
 self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener("activate",e=>e.waitUntil(Promise.all([
