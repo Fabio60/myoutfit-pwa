@@ -25,8 +25,11 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
 .summaryBtn{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:0;display:flex;align-items:center;gap:12px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 86px);background:#222;color:#fff;padding:10px 14px;border-radius:999px;font-size:14px;z-index:50}
 .tabPanel{display:block}.tabPanel.hidden{display:none!important}
-.bottomNav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);background:rgba(242,242,247,.96);backdrop-filter:blur(18px);border-top:1px solid #d1d1d6;z-index:40}
-.navBtn{border:0;border-radius:16px;min-height:52px;background:#e9e9ee;color:#6e6e73;font-size:15px;font-weight:800}.navBtn.active{background:#007aff;color:#fff}
+.bottomNav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:flex;align-items:stretch;justify-content:space-around;padding:7px 10px calc(env(safe-area-inset-bottom) + 7px);background:rgba(249,249,249,.96);backdrop-filter:blur(18px);border-top:1px solid #d1d1d6;z-index:40}
+.navBtn{flex:1;border:0;background:transparent;color:#8e8e93;min-height:54px;font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+.navBtn .navIcon{font-size:22px;line-height:1}.navBtn.active{color:#007aff}.navBtn.active::after{content:"";position:absolute;bottom:2px;width:28px;height:3px;border-radius:999px;background:#007aff}
+.calendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.calNav{border:0;background:#e9e9ee;color:#007aff;border-radius:12px;width:42px;height:42px;font-size:22px;font-weight:700}.calMonth{font-size:19px;font-weight:800;text-transform:capitalize}
+.calendarWeek,.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.calendarWeek div{text-align:center;font-size:12px;color:#8e8e93;font-weight:700;padding:4px 0}.calDay{position:relative;border:0;background:#f2f2f7;border-radius:12px;aspect-ratio:1/1;min-height:42px;font-size:15px;color:#111}.calDay.empty{visibility:hidden}.calDay.hasShop{background:#eaf4ff;color:#007aff;font-weight:800}.calDay.hasShop::after{content:"";position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#007aff}.calDay.selected{background:#007aff;color:#fff}.calDay.selected::after{background:#fff}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.brand{font-size:32px}.btnRow>*{flex:1}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -112,16 +115,22 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
   <div id="historyPanel" class="tabPanel hidden">
     <div class="card">
       <div class="sectionTitle">Storico Acquisti</div>
-      <label>Seleziona una data</label>
-      <input id="historyDate" class="field" type="date">
-      <div id="historyByDate" style="margin-top:12px"></div>
+      <div class="calendarHead">
+        <button class="calNav" id="prevMonthBtn" aria-label="Mese precedente">‹</button>
+        <div class="calMonth" id="calendarMonthLabel"></div>
+        <button class="calNav" id="nextMonthBtn" aria-label="Mese successivo">›</button>
+      </div>
+      <div class="calendarWeek"><div>L</div><div>M</div><div>M</div><div>G</div><div>V</div><div>S</div><div>D</div></div>
+      <div class="calendarGrid" id="historyCalendar"></div>
+      <div id="selectedHistoryLabel" class="muted small" style="margin-top:14px"></div>
+      <div id="historyByDate" style="margin-top:8px"></div>
     </div>
   </div>
 </div>
 
 <div class="bottomNav">
-  <button class="navBtn active" id="navCurrent">Spesa</button>
-  <button class="navBtn" id="navHistory">Storico Acquisti</button>
+  <button class="navBtn active" id="navCurrent"><span class="navIcon">🛒</span><span>Spesa</span></button>
+  <button class="navBtn" id="navHistory"><span class="navIcon">🗓️</span><span>Storico</span></button>
 </div>
 
 <div id="editItemSheet" class="sheet hidden">
@@ -203,7 +212,7 @@ const SUPABASE_KEY="sb_publishable_waNH0xJIs-giJ7YNsXV-sw_t_H_UtS5";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
 const STORE="latuaspesa_workspace_v2";
-let workspace=null,state={places:[],items:[],suggestions:[]},poll=null,activeSwipe=null,isSwiping=false,editingItemId=null;
+let workspace=null,state={places:[],items:[],suggestions:[]},poll=null,activeSwipe=null,isSwiping=false,editingItemId=null,historySelectedDate=today(),historyMonth=today().slice(0,7);
 
 function today(){return new Date().toISOString().slice(0,10)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -245,7 +254,7 @@ async function load(){
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderHistoryByDate();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderHistoryCalendar();renderHistoryByDate();renderPendingCount();
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
@@ -373,10 +382,39 @@ function renderHistoryItems(){
     toast("Rimesso tra gli acquisti");
   });
 }
+function archivedDates(){
+  return new Set(state.items.filter(i=>i.archived_at).map(i=>String(i.archived_at).slice(0,10)));
+}
+function renderHistoryCalendar(){
+  const root=$("#historyCalendar"); if(!root)return;
+  const [y,m]=historyMonth.split("-").map(Number);
+  const first=new Date(y,m-1,1);
+  const days=new Date(y,m,0).getDate();
+  const offset=(first.getDay()+6)%7;
+  const names=new Intl.DateTimeFormat("it-IT",{month:"long",year:"numeric"}).format(first);
+  $("#calendarMonthLabel").textContent=names;
+  const marked=archivedDates();
+  let html="";
+  for(let i=0;i<offset;i++) html+='<button class="calDay empty" disabled></button>';
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const cls=["calDay"];
+    if(marked.has(iso))cls.push("hasShop");
+    if(iso===historySelectedDate)cls.push("selected");
+    html+=`<button class="${cls.join(" ")}" data-history-day="${iso}">${d}</button>`;
+  }
+  root.innerHTML=html;
+  root.querySelectorAll("[data-history-day]").forEach(b=>b.onclick=()=>{
+    historySelectedDate=b.dataset.historyDay;
+    renderHistoryCalendar();
+    renderHistoryByDate();
+  });
+}
 function renderHistoryByDate(){
   const root=$("#historyByDate");
   if(!root)return;
-  const d=$("#historyDate")?.value||today();
+  const d=historySelectedDate||today();
+  $("#selectedHistoryLabel").textContent="Acquisti del "+fmtDate(d);
   const items=state.items.filter(i=>i.archived_at && String(i.archived_at).slice(0,10)===d)
     .sort((a,b)=>a.place_name.localeCompare(b.place_name)||a.name.localeCompare(b.name));
   if(!items.length){root.innerHTML='<div class="empty">Nessun acquisto registrato in questa data.</div>';return}
@@ -388,13 +426,19 @@ function renderHistoryByDate(){
       ${arr.map(i=>`<div class="itemRow"><div class="itemName">${esc(i.name)}</div></div>`).join("")}
     </div>`).join("");
 }
+function shiftHistoryMonth(delta){
+  const [y,m]=historyMonth.split("-").map(Number);
+  const d=new Date(y,m-1+delta,1);
+  historyMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  renderHistoryCalendar();
+}
 function switchTab(which){
   const hist=which==="history";
   $("#currentPanel").classList.toggle("hidden",hist);
   $("#historyPanel").classList.toggle("hidden",!hist);
   $("#navCurrent").classList.toggle("active",!hist);
   $("#navHistory").classList.toggle("active",hist);
-  if(hist)renderHistoryByDate();
+  if(hist){renderHistoryCalendar();renderHistoryByDate();}
 }
 async function finishShopping(){
   const currentBought=state.items.filter(i=>i.purchased&&!i.archived_at).length;
@@ -402,7 +446,8 @@ async function finishShopping(){
   if(!confirm("Terminare la spesa e spostare "+currentBought+" prodotti nello Storico Acquisti?"))return;
   const n=await rpc("shopping_v2_finish",{p_list_id:workspace.id,p_token:workspace.token});
   await load();
-  $("#historyDate").value=today();
+  historySelectedDate=today();
+  historyMonth=today().slice(0,7);
   toast(n+" prodotti archiviati");
 }
 function pendingItems(placeId=null){
@@ -568,8 +613,9 @@ async function boot(){
   $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
   $("#goingPlaceSelect").onchange=()=>{renderPendingCount();renderSuggestions()};
-  $("#historyDate").value=today();
-  $("#historyDate").onchange=renderHistoryByDate;
+  historySelectedDate=today();historyMonth=today().slice(0,7);
+  $("#prevMonthBtn").onclick=()=>shiftHistoryMonth(-1);
+  $("#nextMonthBtn").onclick=()=>shiftHistoryMonth(1);
   $("#finishShoppingBtn").onclick=finishShopping;
   $("#navCurrent").onclick=()=>switchTab("current");
   $("#navHistory").onclick=()=>switchTab("history");
