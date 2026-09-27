@@ -15,6 +15,7 @@
 .btn{border:0;border-radius:16px;min-height:48px;padding:12px 16px;background:#007aff;color:#fff;font-size:17px;font-weight:700}.btn.secondary{background:#e9e9ee;color:#007aff}.btn.danger{background:#ff3b30}.btn.full{width:100%}.btnRow{display:flex;gap:10px;flex-wrap:wrap}.field{width:100%;border:0;background:#f2f2f7;border-radius:14px;padding:13px 14px;font-size:17px;outline:none}.field:focus{box-shadow:0 0 0 2px #007aff33}
 label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .placeRow,.itemRow{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #ececf0}.placeRow:last-child,.itemRow:last-child{border-bottom:0}
+.swipe{position:relative;overflow:hidden;border-bottom:1px solid #ececf0}.swipe:last-child{border-bottom:0}.swipeTrack{display:flex;width:100%;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}.swipeMain{display:flex;align-items:center;gap:10px;padding:12px 2px;min-width:100%;background:#fff}.swipeActions{display:flex;align-items:center;gap:8px;padding:6px}.swipeAction{border:0;color:#fff;font-size:14px;font-weight:700;border-radius:22px;height:44px;padding:0 16px}.swipeEdit{background:#ff9500}.swipeDelete{background:#ff3b30}
 .placeName,.itemName{flex:1;font-size:17px;min-width:0}.itemMeta{font-size:12px;color:#8e8e93;margin-top:3px}.pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:#eef6ff;color:#007aff;padding:6px 10px;font-size:12px;font-weight:700}
 .check{width:28px;height:28px;border:2px solid #c7c7cc;border-radius:50%;background:#fff;display:grid;place-items:center;flex:0 0 auto}.check.done{background:#34c759;border-color:#34c759;color:#fff}.mini{border:0;background:#f2f2f7;border-radius:12px;min-height:40px;padding:8px 12px;font-size:14px;font-weight:700;color:#007aff}.mini.danger{color:#ff3b30}
 .hero{background:#007aff;color:#fff;border-radius:22px;padding:18px;margin:12px 0;display:flex;align-items:center;gap:12px}.heroText{flex:1}.heroTitle{font-size:22px;font-weight:800}.heroSub{font-size:13px;opacity:.85;margin-top:4px}.hero .count{font-size:30px;font-weight:800}
@@ -80,10 +81,38 @@ label{display:block;font-size:13px;color:#6e6e73;margin:0 0 6px 4px}.grid2{displ
     <button class="btn full" id="addProductBtn">Aggiungi alla spesa</button>
   </div>
 
+  <div class="card" style="padding:12px 16px">
+    <button class="btn secondary full" id="openRecipeBtn">＋ Aggiungi da ricetta</button>
+  </div>
+
   <div class="card">
     <div class="sectionTitle">Prodotti programmati</div>
     <div class="muted small">Qui restano anche i prodotti inseriti per date future e quelli già acquistati.</div>
     <div id="allItems" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="recipeSheet" class="sheet hidden">
+  <div class="sheetbox">
+    <div class="sectionTitle">Aggiungi da ricetta</div>
+    <div class="muted small" style="margin-bottom:10px">Incolla il testo della ricetta. Puoi scegliere luogo e data prima di aggiungere gli ingredienti.</div>
+    <textarea id="recipeText" class="field" rows="8" placeholder="Incolla qui la ricetta o l'elenco ingredienti…"></textarea>
+    <div style="height:10px"></div>
+    <div class="grid2">
+      <div>
+        <label>Luogo</label>
+        <select id="recipePlaceSelect" class="field"></select>
+      </div>
+      <div>
+        <label>Data</label>
+        <input id="recipeDate" class="field" type="date">
+      </div>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn full" id="extractRecipeBtn">Trova ingredienti</button>
+    <div id="recipePreview" class="hidden" style="margin-top:12px"></div>
+    <div style="height:8px"></div>
+    <button class="btn secondary full" id="closeRecipeBtn">Chiudi</button>
   </div>
 </div>
 
@@ -159,19 +188,30 @@ async function load(){
 }
 
 function render(){
-  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderAllItems();renderPendingCount();
+  renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderAllItems();renderPendingCount();
   $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
+}
+function setupSwipe(el){
+  const track=el.querySelector(".swipeTrack");let startX=0,currentX=0,drag=false;
+  el.addEventListener("touchstart",e=>{startX=e.touches[0].clientX;currentX=startX;drag=true},{passive:true});
+  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-190,Math.min(0,currentX-startX));track.style.transition="none";track.style.transform=`translateX(${dx}px)`},{passive:true});
+  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;track.style.transition="transform .18s ease";track.style.transform=dx<-55?"translateX(-190px)":"translateX(0)"});
 }
 function renderPlaces(){
   const root=$("#placesList");
   if(!state.places.length){root.innerHTML='<div class="empty">Aggiungi almeno un luogo dove fai la spesa.</div>';return}
-  root.innerHTML=state.places.map(p=>`<div class="placeRow">
-    <div class="placeName">${esc(p.name)}</div>
-    <button class="mini" data-edit-place="${p.id}">Modifica</button>
-    <button class="mini danger" data-del-place="${p.id}">Elimina</button>
+  root.innerHTML=state.places.map(p=>`<div class="swipe" data-place="${p.id}">
+    <div class="swipeTrack">
+      <div class="swipeMain"><div class="placeName">${esc(p.name)}</div></div>
+      <div class="swipeActions">
+        <button class="swipeAction swipeEdit" data-edit-place="${p.id}">Modifica</button>
+        <button class="swipeAction swipeDelete" data-del-place="${p.id}">Elimina</button>
+      </div>
+    </div>
   </div>`).join("");
-  root.querySelectorAll("[data-edit-place]").forEach(b=>b.onclick=()=>editPlace(b.dataset.editPlace));
-  root.querySelectorAll("[data-del-place]").forEach(b=>b.onclick=()=>deletePlace(b.dataset.delPlace));
+  root.querySelectorAll(".swipe").forEach(setupSwipe);
+  root.querySelectorAll("[data-edit-place]").forEach(b=>b.onclick=e=>{e.stopPropagation();editPlace(b.dataset.editPlace)});
+  root.querySelectorAll("[data-del-place]").forEach(b=>b.onclick=e=>{e.stopPropagation();deletePlace(b.dataset.delPlace)});
 }
 function renderPlaceSelect(){
   const s=$("#placeSelect"),old=s.value;
@@ -183,26 +223,38 @@ function renderGoingPlaceSelect(){
   s.innerHTML='<option value="">Tutti i luoghi</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   if([...s.options].some(o=>o.value===old))s.value=old;
 }
+function renderRecipePlaceSelect(){
+  const s=$("#recipePlaceSelect"); if(!s)return;
+  const old=s.value;
+  s.innerHTML='<option value="">Senza luogo</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  if([...s.options].some(o=>o.value===old))s.value=old;
+}
 function renderAllItems(){
   const root=$("#allItems");
   if(!state.items.length){root.innerHTML='<div class="empty">Nessun prodotto inserito.</div>';return}
   const items=[...state.items].sort((a,b)=>a.needed_date.localeCompare(b.needed_date)||a.place_name.localeCompare(b.place_name));
   root.innerHTML=items.map(i=>{
-    const cls=i.purchased?"done":"";
     const status=i.purchased?"Acquistato":(i.needed_date<today()?"Arretrato":(i.needed_date===today()?"Oggi":"Futuro"));
-    return `<div class="itemRow">
-      <button class="check ${cls}" data-toggle="${i.id}">${i.purchased?"✓":""}</button>
-      <div style="flex:1;min-width:0">
-        <div class="itemName ${i.purchased?"muted":""}">${esc(i.name)}</div>
-        <div class="itemMeta">${esc(i.place_name)} · ${fmtDate(i.needed_date)} · ${status}</div>
+    return `<div class="swipe" data-item="${i.id}">
+      <div class="swipeTrack">
+        <div class="swipeMain">
+          <button class="check ${i.purchased?"done":""}" data-toggle="${i.id}">${i.purchased?"✓":""}</button>
+          <div style="flex:1;min-width:0">
+            <div class="itemName ${i.purchased?"muted":""}">${esc(i.name)}</div>
+            <div class="itemMeta">${esc(i.place_name)} · ${fmtDate(i.needed_date)} · ${status}</div>
+          </div>
+        </div>
+        <div class="swipeActions">
+          <button class="swipeAction swipeEdit" data-edit-item="${i.id}">Modifica</button>
+          <button class="swipeAction swipeDelete" data-del-item="${i.id}">Elimina</button>
+        </div>
       </div>
-      <button class="mini" data-edit-item="${i.id}">Modifica</button>
-      <button class="mini danger" data-del-item="${i.id}">Elimina</button>
     </div>`;
   }).join("");
-  root.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=async()=>{await rpc("shopping_v2_toggle_item",{p_item_id:b.dataset.toggle,p_token:workspace.token});await load()});
-  root.querySelectorAll("[data-edit-item]").forEach(b=>b.onclick=()=>editItem(b.dataset.editItem));
-  root.querySelectorAll("[data-del-item]").forEach(b=>b.onclick=()=>deleteItem(b.dataset.delItem));
+  root.querySelectorAll(".swipe").forEach(setupSwipe);
+  root.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=async e=>{e.stopPropagation();await rpc("shopping_v2_toggle_item",{p_item_id:b.dataset.toggle,p_token:workspace.token});await load()});
+  root.querySelectorAll("[data-edit-item]").forEach(b=>b.onclick=e=>{e.stopPropagation();editItem(b.dataset.editItem)});
+  root.querySelectorAll("[data-del-item]").forEach(b=>b.onclick=e=>{e.stopPropagation();deleteItem(b.dataset.delItem)});
 }
 function pendingItems(placeId=null){
   return state.items.filter(i=>!i.purchased&&i.needed_date<=today()&&(!placeId||i.place_id===placeId));
@@ -273,6 +325,35 @@ async function deleteItem(id){
   if(!confirm("Eliminare “"+i.name+"”?"))return;
   await rpc("shopping_v2_delete_item",{p_item_id:id,p_token:workspace.token});await load()
 }
+function extractIngredients(text){
+  const raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const noise=/^(annuncio pubblicitario|pubblicit[aà]|advertisement|sponsorizzato)$/i;
+  const section=/^(ingredienti|per la|per il|per lo|per gli|per le|per i)\b/i;
+  const stop=/^(procedimento|preparazione|metodo|istruzioni|note|cottura|come si prepara)\b/i;
+  return raw.filter(line=>{
+    if(noise.test(line)||section.test(line)||stop.test(line)||line.length>140)return false;
+    const qty=/\b\d+(?:[\.,]\d+)?\b/.test(line);
+    const unit=/\b(g|kg|ml|cl|dl|l|gr|grammi?|etto|etti|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|tuorli?|albumi?|pizzic(?:o|hi)|q\.b\.|qb)\b/i.test(line);
+    const words=/\b(farina|burro|zucchero|uov[aoe]|latte|tuorl[oi]|limone|scorza|sale|olio|acqua|gelatina|frutta\s+secca|noci?|mandorle?|nocciole?|pinoli?|lievito|vaniglia|cacao|cioccolato|panna|miele|riso|pasta|pomodor[oi]|cipoll[ae]|aglio|pepe|formaggio|parmigiano|mozzarella|carne|pollo|pesce)\b/i.test(line);
+    return qty||unit||words||/^[-•*]\s*/.test(line);
+  }).map(x=>x.replace(/^[-•*]\s*/,"").trim()).filter(Boolean).slice(0,80);
+}
+function showRecipePreview(){
+  const items=extractIngredients($("#recipeText").value),box=$("#recipePreview");
+  if(!items.length){box.classList.add("hidden");toast("Non trovo ingredienti chiari");return}
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="sectionTitle">Ingredienti trovati</div>
+  <div class="muted small" style="margin-bottom:8px">Togli la spunta a ciò che non vuoi aggiungere.</div>
+  ${items.map((x,i)=>`<label class="itemRow" style="cursor:pointer"><input type="checkbox" checked data-ri="${i}" style="width:22px;height:22px"><span class="itemName">${esc(x)}</span></label>`).join("")}
+  <button class="btn full" id="addRecipeItemsBtn" style="margin-top:12px">Aggiungi selezionati</button>`;
+  $("#addRecipeItemsBtn").onclick=async()=>{
+    const selected=[...box.querySelectorAll("input[data-ri]:checked")].map(ch=>items[Number(ch.dataset.ri)]);
+    const place=$("#recipePlaceSelect").value||null,date=$("#recipeDate").value||today();
+    if(!selected.length){toast("Nessun ingrediente selezionato");return}
+    for(const name of selected)await rpc("shopping_v2_add_item",{p_list_id:workspace.id,p_token:workspace.token,p_place_id:place,p_name:name,p_needed_date:date});
+    $("#recipeText").value="";box.classList.add("hidden");$("#recipeSheet").classList.add("hidden");await load();toast(selected.length+" ingredienti aggiunti");
+  };
+}
 function openShare(){
   $("#shareSheet").classList.remove("hidden");$("#qrcode").innerHTML="";
   new QRCode($("#qrcode"),{text:shareUrl(),width:220,height:220,correctLevel:QRCode.CorrectLevel.M});
@@ -284,10 +365,13 @@ async function nativeShare(){
 }
 
 async function boot(){
-  $("#needDate").value=today();
+  $("#needDate").value=today();$("#recipeDate").value=today();
   $("#addPlaceBtn").onclick=addPlace;
   $("#placeInput").addEventListener("keydown",e=>{if(e.key==="Enter")addPlace()});
   $("#addProductBtn").onclick=addProduct;
+  $("#openRecipeBtn").onclick=()=>$("#recipeSheet").classList.remove("hidden");
+  $("#closeRecipeBtn").onclick=()=>$("#recipeSheet").classList.add("hidden");
+  $("#extractRecipeBtn").onclick=showRecipePreview;
   $("#productInput").addEventListener("keydown",e=>{if(e.key==="Enter")addProduct()});
   $("#goingPlaceSelect").onchange=renderPendingCount;
   $("#openPendingBtn").onclick=async()=>{await load();renderPendingGroups();$("#pendingSheet").classList.remove("hidden")};
