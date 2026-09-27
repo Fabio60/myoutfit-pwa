@@ -358,7 +358,7 @@ async function load(){
 
 function render(){
   renderPlaces();renderPlaceSelect();renderGoingPlaceSelect();renderRecipePlaceSelect();renderSuggestions();renderAllItems();renderHistoryItems();renderHistoryCalendar();renderHistoryByDate();renderPendingCount();
-  $("#syncStatus").textContent="Aggiornato ora · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
+  $("#syncStatus").textContent="Aggiornato ora · Spazio "+workspaceCode()+" · "+state.places.length+" luoghi · "+state.items.length+" prodotti";
 }
 function setupSwipe(el){
   const track=el.querySelector(".swipeTrack");
