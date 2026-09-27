@@ -375,9 +375,24 @@ async function deleteItem(id){
   activeSwipe=null;await rpc("shopping_v2_delete_item",{p_item_id:id,p_token:workspace.token});await load()
 }
 function extractIngredients(text){
-  let raw=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  // 1) Normalizza testo parlato/prosa:
+  // "Gli ingredienti sono quindi: 1 vasetto..., 3 vasetti..., ... e 2-3 mele"
+  let normalized=String(text||"")
+    .replace(/gli ingredienti (?:sono|sono quindi|sono i seguenti)\s*:\s*/ig,"")
+    .replace(/ingredienti\s*:\s*/ig,"")
+    .replace(/\r/g,"");
 
-  // Ricette copiate da siti spesso separano quantità e ingrediente su due righe:
+  // Se una riga contiene molti ingredienti separati da virgole, trasformala in più righe.
+  let raw=[];
+  for(const original of normalized.split(/\n+/).map(x=>x.trim()).filter(Boolean)){
+    const parts=original
+      .split(/\s*;\s*|\s*,\s*|\s+e\s+(?=(?:\d|un\b|una\b|q\.?b\.?\b))/i)
+      .map(x=>x.trim())
+      .filter(Boolean);
+    raw.push(...parts);
+  }
+
+  // 2) Ricette copiate da siti spesso separano quantità e ingrediente su due righe:
   // "130" + "g burro" -> "130 g burro"
   const merged=[];
   for(let i=0;i<raw.length;i++){
@@ -397,13 +412,14 @@ function extractIngredients(text){
   const noise=/^(annuncio pubblicitario|pubblicit[aà]|advertisement|sponsorizzato)$/i;
   const section=/^(ingredienti|per\s+.+)$/i;
   const stop=/^(procedimento|preparazione|metodo|istruzioni|note|cottura|come si prepara)\b/i;
-  const known=/\b(farina|burro|zucchero|uov[aoe]|latte|tuorl[oi]|album[ei]|limone|scorza|sale|olio|acqua|gelatina|frutta\s+secca|noci?|mandorle?|nocciole?|pinoli?|lievito|vaniglia|cacao|cioccolato|panna|miele|riso|pasta|pomodor[oi]|cipoll[ae]|cipollotto|aglio|pepe|formaggio|parmigiano|mozzarella|robiola|zucchin[ae]|carote?|patate?|carne|pollo|pesce|erbe\s+aromatiche)\b/i;
+  const known=/\b(farina|burro|zucchero|yogurt|mele?|mela|uov[aoe]|latte|tuorl[oi]|album[ei]|limone|scorza|sale|olio|acqua|gelatina|frutta\s+secca|noci?|mandorle?|nocciole?|pinoli?|lievito|vaniglia|cacao|cioccolato|panna|miele|riso|pasta|pomodor[oi]|cipoll[ae]|cipollotto|aglio|pepe|formaggio|parmigiano|mozzarella|robiola|zucchin[ae]|carote?|patate?|carne|pollo|pesce|erbe\s+aromatiche)\b/i;
 
   return raw.filter(line=>{
     if(noise.test(line)||section.test(line)||stop.test(line)||line.length>160)return false;
-    const qty=/\b\d+(?:[\.,]\d+)?\b/.test(line);
-    const unit=/\b(g|kg|mg|ml|cl|dl|l|gr|grammi?|etto|etti|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|tuorli?|albumi?|pizzic(?:o|hi)|q\.b\.|qb)\b/i.test(line);
-    return qty||unit||known.test(line)||/^[-•*]\s*/.test(line);
+    const qty=/\b\d+(?:[\.,]\d+)?(?:\s*[-–]\s*\d+(?:[\.,]\d+)?)?\b/.test(line);
+    const wordQty=/\b(un|una|uno|mezzo|mezza)\b/i.test(line);
+    const unit=/\b(g|kg|mg|ml|cl|dl|l|gr|grammi?|etto|etti|vasett[oi]|bustin[ae]|cucchiai?|cucchiaini?|tazze?|spicchi?|fette?|pezzi?|uova?|tuorli?|albumi?|pizzic(?:o|hi)|q\.b\.|qb)\b/i.test(line);
+    return qty||wordQty||unit||known.test(line)||/^[-•*]\s*/.test(line);
   }).map(x=>x.replace(/^[-•*]\s*/,"").trim()).filter(Boolean).slice(0,80);
 }
 function showRecipePreview(){
