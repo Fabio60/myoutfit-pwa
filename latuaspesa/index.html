@@ -15,10 +15,13 @@
 .sub{color:#6e6e73;font-size:14px;margin-top:2px}.card{background:white;border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 1px 0 rgba(0,0,0,.04)}
 .btn{border:0;border-radius:14px;padding:13px 16px;font-size:17px;font-weight:700;background:#007aff;color:white;width:100%}.btn.secondary{background:#e9e9ee;color:#007aff}.btn.danger{background:#fff0f0;color:#ff3b30}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{width:100%;border:0;background:#f2f2f7;border-radius:12px;padding:13px 14px;font-size:17px;outline:none}
-.row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #ececf0}.row:last-child{border-bottom:0}.itemSwipe{position:relative;overflow:hidden;border-bottom:1px solid #ececf0}.itemSwipeWrap{display:flex;width:100%;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}.itemSwipeMain{display:flex;align-items:center;gap:12px;padding:12px 2px;min-width:100%;background:#fff}.itemAction{flex:0 0 82px;height:44px;border:0;color:#fff;font-size:14px;font-weight:700;margin:auto 5px;border-radius:22px}.itemEdit{background:#ff9500}.itemDelete{background:#ff3b30}
+.row{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #ececf0}.row:last-child{border-bottom:0}.itemSwipe{position:relative;overflow:hidden;border-bottom:1px solid #ececf0}.itemSwipeWrap{display:flex;width:100%;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}.itemSwipeMain{display:flex;align-items:center;gap:12px;padding:12px 2px;min-width:100%;background:#fff}.itemAction{flex:0 0 92px;border:0;background:transparent;padding:6px 5px;display:flex;align-items:center;justify-content:center}
+.itemAction span{display:flex;align-items:center;justify-content:center;width:82px;height:44px;border-radius:999px;color:#fff;font-size:14px;font-weight:700}
+.itemEdit span{background:#ff9500}.itemDelete span{background:#ff3b30}
 .check{width:26px;height:26px;border:2px solid #c7c7cc;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.check.done{background:#34c759;border-color:#34c759;color:white}
 .itemname{font-size:18px;flex:1}.itemname.done{text-decoration:line-through;color:#8e8e93}.more{border:0;background:transparent;font-size:24px;color:#8e8e93;padding:4px 8px}
-.muted{color:#8e8e93}.small{font-size:13px}.listCard{cursor:pointer;position:relative;overflow:hidden;padding:0;border-bottom:1px solid #ececf0}.swipeWrap{display:flex;width:100%;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}.swipeMain{display:flex;align-items:center;gap:12px;padding:12px 2px;min-width:100%;background:#fff}.swipeDelete{flex:0 0 86px;height:44px;border:0;background:#ff3b30;color:#fff;font-size:15px;font-weight:700;margin:auto 5px;border-radius:22px}.listTitle{font-size:18px;font-weight:700}.pill{display:inline-block;background:#eef6ff;color:#007aff;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
+.muted{color:#8e8e93}.small{font-size:13px}.listCard{cursor:pointer;position:relative;overflow:hidden;padding:0;border-bottom:1px solid #ececf0}.swipeWrap{display:flex;width:100%;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}.swipeMain{display:flex;align-items:center;gap:12px;padding:12px 2px;min-width:100%;background:#fff}.swipeDelete{flex:0 0 96px;border:0;background:transparent;padding:6px 5px;display:flex;align-items:center;justify-content:center;color:transparent;font-size:0}
+.swipeDelete::after{content:"Elimina";display:flex;align-items:center;justify-content:center;width:86px;height:44px;border-radius:999px;background:#ff3b30;color:#fff;font-size:15px;font-weight:700}.listTitle{font-size:18px;font-weight:700}.pill{display:inline-block;background:#eef6ff;color:#007aff;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
 .headerList{display:flex;align-items:center;gap:8px;margin-bottom:8px}.back{border:0;background:transparent;color:#007aff;font-size:17px;padding:8px 8px 8px 0}
 .actions{display:flex;gap:8px}.iconbtn{border:0;background:#e9e9ee;border-radius:12px;padding:10px 12px;font-size:16px;color:#007aff;font-weight:700}
 .addbar{display:flex;gap:8px;position:sticky;bottom:calc(env(safe-area-inset-bottom) + 8px);background:rgba(242,242,247,.94);backdrop-filter:blur(18px);padding:10px 0}
@@ -154,8 +157,8 @@ async function createList(){
 function setupSwipe(el){
   const wrap=el.querySelector(".swipeWrap");let startX=0,currentX=0,drag=false;
   el.addEventListener("touchstart",e=>{startX=e.touches[0].clientX;currentX=startX;drag=true},{passive:true});
-  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-96,Math.min(0,currentX-startX));wrap.style.transition="none";wrap.style.transform=`translateX(${dx}px)`},{passive:true});
-  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;wrap.style.transition="transform .18s ease";wrap.style.transform=dx<-42?"translateX(-96px)":"translateX(0)"});
+  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-102,Math.min(0,currentX-startX));wrap.style.transition="none";wrap.style.transform=`translateX(${dx}px)`},{passive:true});
+  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;wrap.style.transition="transform .18s ease";wrap.style.transform=dx<-42?"translateX(-102px)":"translateX(0)"});
 }
 async function deleteSavedList(id){
   const x=getHistory().find(v=>v.id===id);if(!x)return;
@@ -198,8 +201,8 @@ function renderItems(items){
         <button class="check ${i.purchased?"done":""}" data-toggle="${i.id}">${i.purchased?"✓":""}</button>
         <div class="itemname ${i.purchased?"done":""}">${esc(i.name)}</div>
       </div>
-      <button class="itemAction itemEdit" data-edit="${i.id}" data-name="${encodeURIComponent(i.name)}">Modifica</button>
-      <button class="itemAction itemDelete" data-delete-item="${i.id}" data-name="${encodeURIComponent(i.name)}">Elimina</button>
+      <button class="itemAction itemEdit" data-edit="${i.id}" data-name="${encodeURIComponent(i.name)}"><span>Modifica</span></button>
+      <button class="itemAction itemDelete" data-delete-item="${i.id}" data-name="${encodeURIComponent(i.name)}"><span>Elimina</span></button>
     </div>
   </div>`).join("");
   root.querySelectorAll(".itemSwipe").forEach(el=>setupItemSwipe(el));
@@ -257,8 +260,8 @@ function showRecipePreview(){
 function setupItemSwipe(el){
   const wrap=el.querySelector(".itemSwipeWrap");let startX=0,currentX=0,drag=false;
   el.addEventListener("touchstart",e=>{startX=e.touches[0].clientX;currentX=startX;drag=true},{passive:true});
-  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-184,Math.min(0,currentX-startX));wrap.style.transition="none";wrap.style.transform=`translateX(${dx}px)`},{passive:true});
-  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;wrap.style.transition="transform .18s ease";wrap.style.transform=dx<-55?"translateX(-184px)":"translateX(0)"});
+  el.addEventListener("touchmove",e=>{if(!drag)return;currentX=e.touches[0].clientX;const dx=Math.max(-194,Math.min(0,currentX-startX));wrap.style.transition="none";wrap.style.transform=`translateX(${dx}px)`},{passive:true});
+  el.addEventListener("touchend",()=>{if(!drag)return;drag=false;const dx=currentX-startX;wrap.style.transition="transform .18s ease";wrap.style.transform=dx<-55?"translateX(-194px)":"translateX(0)"});
 }
 async function editItem(id,name){
   const next=prompt("Modifica prodotto:",name);
