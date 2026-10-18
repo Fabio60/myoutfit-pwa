@@ -1,0 +1,1 @@
+const R="/myoutfit-pwa/familychat/";self.addEventListener("install",e=>{e.waitUntil(caches.open("fc-v1").then(c=>c.addAll([R,R+"app.js",R+"manifest.webmanifest"])).then(()=>self.skipWaiting()))});self.addEventListener("fetch",e=>{if(e.request.mode==="navigate"&&new URL(e.request.url).pathname.startsWith(R)){e.respondWith(fetch(e.request).catch(()=>caches.match(R)))}});
